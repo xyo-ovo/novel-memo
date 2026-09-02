@@ -131,6 +131,45 @@
     background-position: center;
   }
   .sort-box select option { color: var(--text); }
+  .manage-box { position: relative; }
+  #manage-btn {
+    height: 44px;
+    padding: 0 11px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--text-sub);
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: var(--shadow-card);
+    transition: background .15s;
+  }
+  #manage-btn:active { background: #f0f2f5; }
+  .manage-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    min-width: 120px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 24px rgba(35,45,55,.10);
+    padding: 6px;
+    z-index: 40;
+  }
+  .manage-menu button {
+    width: 100%;
+    height: 38px;
+    border: none;
+    background: var(--card);
+    color: var(--text);
+    font-size: 13px;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  .manage-menu button:active { background: #f3f5f7; }
+  #manage-delete { color: var(--red); }
+  .card.manage-pick { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(47,107,94,.12); }
 
   .filter-row { padding: 8px 16px 4px; display: flex; gap: 6px; flex-shrink: 0; }
   .filter-row button {
@@ -182,15 +221,17 @@
   .card-info { flex: 1; min-width: 0; }
   .card-title { font-size: 17px; font-weight: 650; line-height: 1.4; word-break: break-all; letter-spacing: .2px; }
   .card-author { font-size: 12.5px; color: var(--text-sub); margin-top: 4px; }
+  .card-genres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .card-genre {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     font-size: 11px;
     color: var(--accent);
     background: var(--accent-soft);
     border-radius: 999px;
     padding: 3px 10px;
-    margin-top: 8px;
     letter-spacing: .3px;
+    white-space: nowrap;
   }
   .card-theme-tag {
     display: inline-block;
@@ -221,8 +262,8 @@
   .badge-reading  { background: var(--blue-soft);  color: var(--blue); }
   .badge-dropped  { background: var(--red-soft);   color: var(--red); }
 
-  .meta-line { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 11.5px; color: var(--text-dim); }
-  .meta-line .meta-item { display: flex; align-items: center; gap: 5px; }
+  .meta-line { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11.5px; color: var(--text-dim); }
+  .meta-line .meta-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
   .meta-line .meta-item svg { color: var(--text-dim); }
   .meta-line .dur { color: var(--accent); font-weight: 600; }
   .meta-line .dur svg { color: var(--accent); }
@@ -631,6 +672,13 @@
         <option value="hours">阅读时长 · 长→短</option>
       </select>
     </div>
+    <div class="manage-box">
+      <button id="manage-btn" title="管理">管理</button>
+      <div class="manage-menu" id="manage-menu" hidden>
+        <button id="manage-edit">编辑卡片</button>
+        <button id="manage-delete">删除卡片</button>
+      </div>
+    </div>
   </div>
 
   <div class="filter-row">
@@ -783,6 +831,7 @@
   let searchQuery = '';
   let sortMode = 'recent';
   let editingId = null;
+  let manageMode = null;
 
   const STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7L5.8 21l1.6-7L2 9.3l7.1-.7Z"/></svg>';
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
@@ -903,6 +952,10 @@
   const $list = document.getElementById('list');
   const $search = document.getElementById('search-input');
   const $sort = document.getElementById('sort-select');
+  const $manageBtn = document.getElementById('manage-btn');
+  const $manageMenu = document.getElementById('manage-menu');
+  const $manageEdit = document.getElementById('manage-edit');
+  const $manageDelete = document.getElementById('manage-delete');
   const $fab = document.getElementById('fab');
   const filterBtns = document.querySelectorAll('.filter-row button');
   const $overlayEdit = document.getElementById('overlay-edit');
@@ -1010,7 +1063,7 @@
             `<span class="${i <= r.rating ? 'on' : ''}">${STAR_SVG}</span>`
           ).join('')}</div>` : '';
       const tags = [...new Set(String(r.genre || '').split(/[,，、/;；\n]+/).map(s => s.trim()).filter(Boolean))];
-      const genreTag = tags.length ? tags.map(t => `<span class="card-genre">${esc(t)}</span>`).join(' ') : '';
+      const genreTag = tags.length ? `<div class="card-genres">${tags.map(t => `<span class="card-genre">${esc(t)}</span>`).join('')}</div>` : '';
       // 主题标签已移除
       const notes = r.notes ? `<div class="card-notes">${esc(r.notes)}</div>` : '';
       const coverUrl = coverMap[r.id];
@@ -1050,14 +1103,6 @@
               ${notes}
               ${metaLine}
             </div>
-          </div>
-          <div class="card-actions">
-            <button class="edit" title="编辑">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-            </button>
-            <button class="del" title="删除">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            </button>
           </div>
         </div>`;
     }).join('');
@@ -1406,6 +1451,31 @@
   // ---------- 事件 ----------
   $fab.addEventListener('click', () => openEditSheet(null));
 
+  $manageBtn.addEventListener('click', () => {
+    $manageMenu.hidden = !$manageMenu.hidden;
+  });
+
+  $manageEdit.addEventListener('click', () => {
+    $manageMenu.hidden = true;
+    manageMode = 'edit';
+    document.querySelectorAll('.card').forEach(c => c.classList.add('manage-pick'));
+  });
+
+  $manageDelete.addEventListener('click', () => {
+    $manageMenu.hidden = true;
+    manageMode = 'delete';
+    document.querySelectorAll('.card').forEach(c => c.classList.add('manage-pick'));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.manage-box')) {
+      $manageMenu.hidden = true;
+    }
+    if (manageMode && !e.target.closest('.card') && !e.target.closest('.manage-box')) {
+      exitManageMode();
+    }
+  });
+
   document.getElementById('menu-btn').addEventListener('click', () => {
     $ioResult.textContent = '';
     renderThemes();
@@ -1548,19 +1618,28 @@
     });
   });
 
+  function exitManageMode() {
+    manageMode = null;
+    document.querySelectorAll('.card.manage-pick').forEach(c => c.classList.remove('manage-pick'));
+  }
+
   $list.addEventListener('click', (e) => {
     const card = e.target.closest('.card');
     if (!card) return;
     const id = card.dataset.id;
-    if (e.target.closest('.del')) {
+    if (manageMode === 'delete') {
       handleDelete(id);
-    } else if (e.target.closest('.edit')) {
+      exitManageMode();
+      return;
+    }
+    if (manageMode === 'edit') {
       const rec = records.find(r => r.id === id);
       if (rec) openEditSheet(rec);
-    } else {
-      const notesEl = card.querySelector('.card-notes');
-      if (notesEl) notesEl.classList.toggle('expanded');
+      exitManageMode();
+      return;
     }
+    const notesEl = card.querySelector('.card-notes');
+    if (notesEl) notesEl.classList.toggle('expanded');
   });
 
   document.querySelector('#overlay-edit .sheet').addEventListener('keydown', (e) => {
