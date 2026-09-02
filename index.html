@@ -629,6 +629,11 @@
   .duration-row { display: flex; align-items: center; gap: 6px; }
   .duration-row input { flex: 1; min-width: 0; }
   .duration-row .dur-unit { font-size: 13px; color: var(--text-dim); flex-shrink: 0; }
+
+  .color-theme-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .color-swatch { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text-sub); font-size: 12px; cursor: pointer; }
+  .color-swatch .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+  .color-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(47,107,94,.12); color: var(--text); }
 </style>
 </head>
 <body>
@@ -808,6 +813,15 @@
     <div style="font-size:11px;color:#8b98a3;margin-top:6px;">封面透明、无阴影、垂直居中；同一主题的书按顺序轮流使用封面</div>
     <input type="file" id="theme-cover-input" accept="image/*" multiple style="display:none">
 
+    <div class="section-title">配色主题</div>
+    <div class="color-theme-row" id="color-theme-row">
+      <button class="color-swatch" data-color-theme="forest" title="森绿"><span class="dot" style="background:#2f6b5e"></span>森绿</button>
+      <button class="color-swatch" data-color-theme="mist" title="雾蓝"><span class="dot" style="background:#4a7fa5"></span>雾蓝</button>
+      <button class="color-swatch" data-color-theme="caramel" title="焦糖"><span class="dot" style="background:#a06b4a"></span>焦糖</button>
+      <button class="color-swatch" data-color-theme="sakura" title="樱粉"><span class="dot" style="background:#b06a7b"></span>樱粉</button>
+      <button class="color-swatch" data-color-theme="night" title="夜间"><span class="dot" style="background:#5ea88d"></span>夜间</button>
+    </div>
+
     <div class="section-title">阅读时长格式</div>
     <div class="field">
       <label>卡片上如何显示阅读时长</label>
@@ -844,7 +858,7 @@
   const SETTINGS_KEY = 'novel_memo_settings_v1';
   let records = [];
   let themes = [];
-  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn' };
+  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest' };
   let customFontDataUrl = '';
   let currentFilter = 'all';
   let searchQuery = '';
@@ -873,11 +887,26 @@
   }
 
   // ---------- 设置 ----------
+  const COLOR_THEMES = {
+    forest: { bg:'#f5f6f8', card:'#ffffff', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
+    mist: { bg:'#f4f6f9', card:'#ffffff', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
+    caramel: { bg:'#f8f5f2', card:'#ffffff', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
+    sakura: { bg:'#faf6f7', card:'#ffffff', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
+    night: { bg:'#1e242a', card:'#282f36', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', gold:'#d0a44e' }
+  };
+  function applyColorTheme(themeId) {
+    const t = COLOR_THEMES[themeId] || COLOR_THEMES.forest;
+    Object.keys(t).forEach(k => document.documentElement.style.setProperty('--' + k, t[k]));
+    document.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', b.dataset.colorTheme === (themeId || 'forest')));
+    const mt = document.querySelector('meta[name="theme-color"]');
+    if (mt) mt.setAttribute('content', t.accent);
+  }
+
   function loadSettings() {
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
       if (s && typeof s === 'object') {
-        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn' }, s);
+        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest' }, s);
       }
     } catch (e) {}
     document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
@@ -888,6 +917,7 @@
     document.getElementById('set-cover-radius').value = settings.coverRadius;
     const durSel = document.getElementById('set-duration-format');
     if (durSel) durSel.value = settings.durationFormat;
+    applyColorTheme(settings.colorTheme);
   }
   function saveSettings() {
     try {
@@ -1636,6 +1666,14 @@
   if (durSel) durSel.addEventListener('change', () => {
     settings.durationFormat = durSel.value;
     saveSettings();
+    render();
+  });
+  document.getElementById('color-theme-row').addEventListener('click', (e) => {
+    const btn = e.target.closest('.color-swatch');
+    if (!btn) return;
+    settings.colorTheme = btn.dataset.colorTheme;
+    saveSettings();
+    applyColorTheme(settings.colorTheme);
     render();
   });
 
