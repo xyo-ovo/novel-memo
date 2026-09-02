@@ -625,6 +625,10 @@
   #overlay-edit .sheet-grip { display: none; }
   #btn-delete { background: var(--red-soft); color: var(--red); }
   #btn-delete:active { background: #f2d9d9; }
+
+  .duration-row { display: flex; align-items: center; gap: 6px; }
+  .duration-row input { flex: 1; min-width: 0; }
+  .duration-row .dur-unit { font-size: 13px; color: var(--text-dim); flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -745,8 +749,13 @@
         <input id="f-words" type="number" step="0.1" min="0" placeholder="例如：45w">
       </div>
       <div class="field">
-        <label>阅读时长（小时）</label>
-        <input id="f-hours" type="number" step="0.5" min="0" placeholder="例如：12.5">
+        <label>阅读时长</label>
+        <div class="duration-row">
+          <input id="f-hours-h" type="number" min="0" step="1" placeholder="0">
+          <span class="dur-unit">小时</span>
+          <input id="f-hours-m" type="number" min="0" max="59" step="1" placeholder="0">
+          <span class="dur-unit">分钟</span>
+        </div>
       </div>
     </div>
     <div class="field">
@@ -983,7 +992,8 @@
   const fStartTime = document.getElementById('f-start-time');
   const fEnd = document.getElementById('f-end');
   const fEndTime = document.getElementById('f-end-time');
-  const fHours = document.getElementById('f-hours');
+  const fHoursH = document.getElementById('f-hours-h');
+  const fHoursM = document.getElementById('f-hours-m');
   const fWords = document.getElementById('f-words');
   const fNotes = document.getElementById('f-notes');
   let formStatus = 'reading';
@@ -1414,7 +1424,14 @@
     fStartTime.value = record ? (record.startTime || '') : '';
     fEnd.value = record ? (record.endDate || '') : '';
     fEndTime.value = record ? (record.endTime || '') : '';
-    fHours.value = record && record.readingHours != null ? record.readingHours : '';
+    if (record && record.readingHours != null && record.readingHours > 0) {
+      const totalMin = Math.round(record.readingHours * 60);
+      fHoursH.value = Math.floor(totalMin / 60);
+      fHoursM.value = totalMin % 60;
+    } else {
+      fHoursH.value = '';
+      fHoursM.value = '';
+    }
     fWords.value = record && record.wordCount != null ? record.wordCount : '';
     fNotes.value = record ? (record.notes || '') : '';
     formStatus = record ? (record.status || 'reading') : 'reading';
@@ -1453,8 +1470,14 @@
       setTimeout(() => { fTitle.style.borderColor = ''; }, 1200);
       return;
     }
-    const hoursVal = fHours.value.trim();
-    const readingHours = hoursVal === '' ? null : Math.max(0, parseFloat(hoursVal) || 0);
+    const hText = fHoursH.value.trim();
+    const mText = fHoursM.value.trim();
+    let readingHours = null;
+    if (hText !== '' || mText !== '') {
+      const hh = Math.max(0, parseInt(hText || '0', 10) || 0);
+      const mm = Math.max(0, parseInt(mText || '0', 10) || 0);
+      readingHours = hh + mm / 60;
+    }
     const wordsVal = fWords.value.trim();
     const wordCount = wordsVal === '' ? null : Math.max(0, parseFloat(wordsVal) || 0);
     const data = {
