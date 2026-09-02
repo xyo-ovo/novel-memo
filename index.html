@@ -131,45 +131,7 @@
     background-position: center;
   }
   .sort-box select option { color: var(--text); }
-  .manage-box { position: relative; }
-  #manage-btn {
-    height: 44px;
-    padding: 0 11px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--line);
-    background: var(--card);
-    color: var(--text-sub);
-    font-size: 12px;
-    cursor: pointer;
-    box-shadow: var(--shadow-card);
-    transition: background .15s;
-  }
-  #manage-btn:active { background: #f0f2f5; }
-  .manage-menu {
-    position: absolute;
-    top: 50px;
-    right: 0;
-    min-width: 120px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 8px 24px rgba(35,45,55,.10);
-    padding: 6px;
-    z-index: 40;
-  }
-  .manage-menu button {
-    width: 100%;
-    height: 38px;
-    border: none;
-    background: var(--card);
-    color: var(--text);
-    font-size: 13px;
-    border-radius: 9px;
-    cursor: pointer;
-  }
-  .manage-menu button:active { background: #f3f5f7; }
-  #manage-delete { color: var(--red); }
-  .card.manage-pick { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(47,107,94,.12); }
+
 
   .filter-row { padding: 8px 16px 4px; display: flex; gap: 6px; flex-shrink: 0; }
   .filter-row button {
@@ -641,6 +603,18 @@
   .io-row button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .io-row button.danger { background: var(--red-soft); border-color: #debdbd; color: var(--red); }
   .io-result { margin-top: 12px; font-size: 13px; line-height: 1.7; color: var(--green); white-space: pre-wrap; }
+
+  #overlay-edit { align-items: stretch; }
+  #overlay-edit .sheet {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 20px) 22px calc(24px + var(--safe-bottom));
+  }
+  #overlay-edit .sheet-grip { display: none; }
+  #btn-delete { background: var(--red-soft); color: var(--red); }
+  #btn-delete:active { background: #f2d9d9; }
 </style>
 </head>
 <body>
@@ -679,13 +653,6 @@
         <option value="title">书名 · A→Z</option>
         <option value="hours">阅读时长 · 长→短</option>
       </select>
-    </div>
-    <div class="manage-box">
-      <button id="manage-btn" title="管理">管理</button>
-      <div class="manage-menu" id="manage-menu" hidden>
-        <button id="manage-edit">编辑卡片</button>
-        <button id="manage-delete">删除卡片</button>
-      </div>
     </div>
   </div>
 
@@ -777,7 +744,8 @@
       <textarea id="f-notes" placeholder="记录读后感想、精彩片段、人物关系"></textarea>
     </div>
     <div class="sheet-btns">
-      <button id="btn-cancel">取消</button>
+      <button id="btn-back">返回</button>
+      <button id="btn-delete">删除</button>
       <button id="btn-save">保存</button>
     </div>
   </div>
@@ -849,7 +817,6 @@
   let searchQuery = '';
   let sortMode = 'recent';
   let editingId = null;
-  let manageMode = null;
 
   const STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7L5.8 21l1.6-7L2 9.3l7.1-.7Z"/></svg>';
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
@@ -970,10 +937,6 @@
   const $list = document.getElementById('list');
   const $search = document.getElementById('search-input');
   const $sort = document.getElementById('sort-select');
-  const $manageBtn = document.getElementById('manage-btn');
-  const $manageMenu = document.getElementById('manage-menu');
-  const $manageEdit = document.getElementById('manage-edit');
-  const $manageDelete = document.getElementById('manage-delete');
   const $fab = document.getElementById('fab');
   const filterBtns = document.querySelectorAll('.filter-row button');
   const $overlayEdit = document.getElementById('overlay-edit');
@@ -1413,6 +1376,8 @@
     formRating = record ? (record.rating || 0) : 0;
     updateStatusPicker();
     updateRatingPicker();
+    const btnDel = document.getElementById('btn-delete');
+    if (btnDel) btnDel.style.display = record ? '' : 'none';
     $overlayEdit.classList.add('show');
   }
 
@@ -1493,38 +1458,16 @@
   // ---------- 事件 ----------
   $fab.addEventListener('click', () => openEditSheet(null));
 
-  $manageBtn.addEventListener('click', () => {
-    $manageMenu.hidden = !$manageMenu.hidden;
-  });
-
-  $manageEdit.addEventListener('click', () => {
-    $manageMenu.hidden = true;
-    manageMode = 'edit';
-    document.querySelectorAll('.card').forEach(c => c.classList.add('manage-pick'));
-  });
-
-  $manageDelete.addEventListener('click', () => {
-    $manageMenu.hidden = true;
-    manageMode = 'delete';
-    document.querySelectorAll('.card').forEach(c => c.classList.add('manage-pick'));
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.manage-box')) {
-      $manageMenu.hidden = true;
-    }
-    if (manageMode && !e.target.closest('.card') && !e.target.closest('.manage-box')) {
-      exitManageMode();
-    }
-  });
-
   document.getElementById('menu-btn').addEventListener('click', () => {
     $ioResult.textContent = '';
     renderThemes();
     $overlayIo.classList.add('show');
   });
 
-  document.getElementById('btn-cancel').addEventListener('click', closeEditSheet);
+  document.getElementById('btn-back').addEventListener('click', closeEditSheet);
+  document.getElementById('btn-delete').addEventListener('click', () => {
+    if (editingId) { handleDelete(editingId); closeEditSheet(); }
+  });
   document.getElementById('btn-save').addEventListener('click', handleSave);
   document.getElementById('btn-import-text').addEventListener('click', handleImportText);
   document.getElementById('btn-export').addEventListener('click', handleExport);
@@ -1660,28 +1603,12 @@
     });
   });
 
-  function exitManageMode() {
-    manageMode = null;
-    document.querySelectorAll('.card.manage-pick').forEach(c => c.classList.remove('manage-pick'));
-  }
-
   $list.addEventListener('click', (e) => {
     const card = e.target.closest('.card');
     if (!card) return;
     const id = card.dataset.id;
-    if (manageMode === 'delete') {
-      handleDelete(id);
-      exitManageMode();
-      return;
-    }
-    if (manageMode === 'edit') {
-      const rec = records.find(r => r.id === id);
-      if (rec) openEditSheet(rec);
-      exitManageMode();
-      return;
-    }
-    const notesEl = card.querySelector('.card-notes');
-    if (notesEl) notesEl.classList.toggle('expanded');
+    const rec = records.find(r => r.id === id);
+    if (rec) openEditSheet(rec);
   });
 
   document.querySelector('#overlay-edit .sheet').addEventListener('keydown', (e) => {
