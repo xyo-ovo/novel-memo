@@ -221,11 +221,13 @@
   .card-info { flex: 1; min-width: 0; }
   .card-title { font-size: 17px; font-weight: 650; line-height: 1.4; word-break: break-all; letter-spacing: .2px; }
   .card-author { font-size: 12.5px; color: var(--text-sub); margin-top: 4px; }
-  .card-genres { display: flex; flex-wrap: nowrap; gap: 6px; margin-top: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .card-genres::-webkit-scrollbar { display: none; }
+  .card-genres { display: flex; flex-wrap: nowrap; gap: 6px; margin-top: 8px; }
   .card-genre {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
     font-size: 11px;
     color: var(--accent);
     background: var(--accent-soft);
