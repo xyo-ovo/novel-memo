@@ -615,6 +615,29 @@
   #overlay-edit .sheet-grip { display: none; }
   #btn-delete { background: var(--red-soft); color: var(--red); }
   #btn-delete:active { background: #f2d9d9; }
+
+  /* 阅读月历 */
+  #overlay-stats { align-items: flex-end; }
+  #overlay-stats .sheet { max-height: 92vh; overflow-y: auto; }
+  .stats-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .stats-head h2 { flex: 1; font-size: 18px; font-weight: 650; margin: 0; text-align: center; letter-spacing: .3px; }
+  .stats-head button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text-sub); font-size: 20px; cursor: pointer; line-height: 1; }
+  .stats-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+  .stats-summary .s-item { background: #f8fafb; border: 1px solid #eef1f4; border-radius: 12px; padding: 10px 4px; text-align: center; }
+  .stats-summary .s-num { font-size: 17px; font-weight: 700; color: var(--text); }
+  .stats-summary .s-lbl { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+  .stats-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; font-size: 11px; color: var(--text-dim); text-align: center; }
+  .stats-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .stats-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 12px; color: var(--text-sub); background: #fff; border: 1px solid #eef1f4; position: relative; }
+  .stats-day.has { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-color: #cfe2dc; cursor: pointer; }
+  .stats-day.has::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+  .stats-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .stats-day.empty { background: transparent; border: none; }
+  .stats-day-detail { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .stats-day-detail h3 { font-size: 14px; font-weight: 650; margin-bottom: 10px; }
+  .stats-day-item { padding: 10px 12px; background: #f8fafb; border-radius: 10px; margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .stats-day-item .st-title { flex: 1; min-width: 0; word-break: break-all; }
+  .stats-day-item .st-badge { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -803,6 +826,9 @@
       </select>
     </div>
 
+    <div class="section-title">阅读统计</div>
+    <button id="btn-open-stats" style="width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">打开阅读月历</button>
+
     <div class="section-title">批量导入</div>
     <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
     <div class="io-row">
@@ -813,6 +839,23 @@
     </div>
     <div class="io-result" id="io-result"></div>
     <input type="file" id="file-input" accept=".json,application/json" style="display:none">
+  </div>
+</div>
+
+<!-- 阅读月历弹窗 -->
+<div class="overlay" id="overlay-stats">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <div class="stats-head">
+      <button id="stats-prev">‹</button>
+      <h2 id="stats-month-label"></h2>
+      <button id="stats-next">›</button>
+    </div>
+    <div class="stats-summary" id="stats-summary"></div>
+    <div class="stats-week"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+    <div class="stats-calendar" id="stats-calendar"></div>
+    <div class="stats-day-detail" id="stats-day-detail"></div>
+    <div class="sheet-btns"><button id="stats-close">关闭</button></div>
   </div>
 </div>
 
@@ -1490,7 +1533,101 @@
     }
   }
 
+  // ---------- 阅读月历 ----------
+  let statsYear = new Date().getFullYear();
+  let statsMonth = new Date().getMonth();
+  let statsSelectedDate = null;
+
+  function recordDateKey(r) {
+    if (r.status === 'finished' && r.endDate) return r.endDate.slice(0, 10);
+    if (r.startDate) return r.startDate.slice(0, 10);
+    if (r.endDate) return r.endDate.slice(0, 10);
+    return (r.updatedAt || r.createdAt || '').slice(0, 10);
+  }
+
+  function renderStats() {
+    const ym = statsYear + '-' + String(statsMonth + 1).padStart(2, '0');
+    const map = {};
+    let books = 0, finished = 0, reading = 0, dropped = 0, totalHours = 0;
+    records.forEach(r => {
+      const d = recordDateKey(r);
+      if (!d || !d.startsWith(ym)) return;
+      books++;
+      if (r.status === 'finished') finished++;
+      else if (r.status === 'reading') reading++;
+      else if (r.status === 'dropped') dropped++;
+      if (r.readingHours > 0) totalHours += r.readingHours;
+      (map[d] = map[d] || []).push(r);
+    });
+
+    document.getElementById('stats-month-label').textContent = statsYear + '年' + (statsMonth + 1) + '月';
+    document.getElementById('stats-summary').innerHTML = `
+      <div class="s-item"><div class="s-num">${books}</div><div class="s-lbl">记录</div></div>
+      <div class="s-item"><div class="s-num">${finished}</div><div class="s-lbl">读完</div></div>
+      <div class="s-item"><div class="s-num">${reading}</div><div class="s-lbl">在读</div></div>
+      <div class="s-item"><div class="s-num">${formatReadingHours(totalHours) || '0小时'}</div><div class="s-lbl">时长</div></div>
+    `;
+
+    const daysInMonth = new Date(statsYear, statsMonth + 1, 0).getDate();
+    const firstWeek = (new Date(statsYear, statsMonth, 1).getDay() + 6) % 7;
+    let html = '';
+    for (let i = 0; i < firstWeek; i++) html += '<div class="stats-day empty"></div>';
+    const now = new Date();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const key = ym + '-' + String(day).padStart(2, '0');
+      const has = !!map[key];
+      const isToday = statsYear === now.getFullYear() && statsMonth === now.getMonth() && day === now.getDate();
+      html += `<div class="stats-day ${has ? 'has' : ''} ${isToday ? 'today' : ''}" data-date="${key}">${day}</div>`;
+    }
+    document.getElementById('stats-calendar').innerHTML = html;
+
+    const detail = document.getElementById('stats-day-detail');
+    if (statsSelectedDate && map[statsSelectedDate]) {
+      detail.innerHTML = `<h3>${statsSelectedDate}</h3>` + map[statsSelectedDate].map(r => {
+        const meta = STATUS_META[r.status] || STATUS_META.reading;
+        return `<div class="stats-day-item"><span class="st-title">${esc(r.title)}</span><span class="st-badge ${meta.cls}">${meta.text}</span></div>`;
+      }).join('');
+    } else {
+      detail.innerHTML = '';
+    }
+  }
+
+  function openStats() {
+    const now = new Date();
+    statsYear = now.getFullYear();
+    statsMonth = now.getMonth();
+    statsSelectedDate = null;
+    renderStats();
+    document.getElementById('overlay-stats').classList.add('show');
+  }
+  function closeStats() { document.getElementById('overlay-stats').classList.remove('show'); }
+
+  document.getElementById('btn-open-stats').addEventListener('click', () => {
+    openStats();
+    if (typeof $overlayIo !== 'undefined') $overlayIo.classList.remove('show');
+  });
+  document.getElementById('stats-prev').addEventListener('click', () => {
+    statsMonth--;
+    if (statsMonth < 0) { statsMonth = 11; statsYear--; }
+    statsSelectedDate = null;
+    renderStats();
+  });
+  document.getElementById('stats-next').addEventListener('click', () => {
+    statsMonth++;
+    if (statsMonth > 11) { statsMonth = 0; statsYear++; }
+    statsSelectedDate = null;
+    renderStats();
+  });
+  document.getElementById('stats-close').addEventListener('click', closeStats);
+  document.getElementById('stats-calendar').addEventListener('click', (e) => {
+    const d = e.target.closest('.stats-day');
+    if (!d || !d.dataset.date) return;
+    statsSelectedDate = d.dataset.date;
+    renderStats();
+  });
+
   // ---------- 事件 ----------
+
   $fab.addEventListener('click', () => openEditSheet(null));
 
   document.getElementById('menu-btn').addEventListener('click', () => {
