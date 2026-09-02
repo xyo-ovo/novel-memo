@@ -188,6 +188,12 @@
   #list { flex: 1; overflow-y: auto; padding: 10px 16px 110px; -webkit-overflow-scrolling: touch; }
   #list::-webkit-scrollbar { display: none; }
 
+  .card-time {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 0 0 6px 4px;
+    letter-spacing: .3px;
+  }
   .card {
     background: var(--card);
     border-radius: var(--radius);
@@ -742,8 +748,18 @@
         <input id="f-start" type="date">
       </div>
       <div class="field">
+        <label>开始时间</label>
+        <input id="f-start-time" type="time">
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field">
         <label>结束日期</label>
         <input id="f-end" type="date">
+      </div>
+      <div class="field">
+        <label>结束时间</label>
+        <input id="f-end-time" type="time">
       </div>
     </div>
     <div class="row-2">
@@ -975,7 +991,9 @@
   const fAuthor = document.getElementById('f-author');
   const fGenre = document.getElementById('f-genre');
   const fStart = document.getElementById('f-start');
+  const fStartTime = document.getElementById('f-start-time');
   const fEnd = document.getElementById('f-end');
+  const fEndTime = document.getElementById('f-end-time');
   const fHours = document.getElementById('f-hours');
   const fWords = document.getElementById('f-words');
   const fNotes = document.getElementById('f-notes');
@@ -1079,16 +1097,18 @@
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
              ${r.readingHours} 小时
            </span>` : '';
-      const dateStr = formatDateRange(r);
-      const datePart = dateStr
+      const endDateStr = formatEndDate(r);
+      const endPart = endDateStr
         ? `<span class="meta-item">
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-             ${esc(dateStr)}
+             ${esc(endDateStr)}
            </span>` : '';
-      const metaLine = (wc || dur || datePart)
-        ? `<div class="meta-line">${wc}${dur}${datePart}</div>` : '';
+      const metaLine = (wc || dur || endPart)
+        ? `<div class="meta-line">${wc}${dur}${endPart}</div>` : '';
       const authorLine = r.author ? `<div class="card-author">${esc(r.author)}</div>` : '';
+      const startDisplay = formatStartTime(r);
       return `
+        ${startDisplay ? `<div class="card-time">${startDisplay}</div>` : ''}
         <div class="card" data-id="${r.id}">
           <div class="card-layout">
             ${coverHtml}
@@ -1122,6 +1142,20 @@
     if (s) return s;
     if (e) return e;
     return '';
+  }
+
+  function formatStartTime(r) {
+    const d = r.startDate || '';
+    if (!d) return '';
+    const t = r.startTime || '';
+    return t ? `${d} ${t}` : d;
+  }
+
+  function formatEndDate(r) {
+    const d = r.endDate || '';
+    if (!d) return '';
+    const t = r.endTime || '';
+    return `读完 ${d}${t ? ' ' + t : ''}`;
   }
 
   // ---------- 主题管理渲染 ----------
@@ -1328,7 +1362,9 @@
             status: item.status || 'finished',
             rating: item.rating || 0,
             startDate: item.startDate || '',
+            startTime: item.startTime || '',
             endDate: item.endDate || '',
+            endTime: item.endTime || '',
             readingHours: item.readingHours ?? null,
             wordCount: item.wordCount ?? null,
             notes: item.notes || '',
@@ -1367,7 +1403,9 @@
     fAuthor.value = record ? (record.author || '') : '';
     fGenre.value = record ? (record.genre || '') : '';
     fStart.value = record ? (record.startDate || '') : '';
+    fStartTime.value = record ? (record.startTime || '') : '';
     fEnd.value = record ? (record.endDate || '') : '';
+    fEndTime.value = record ? (record.endTime || '') : '';
     fHours.value = record && record.readingHours != null ? record.readingHours : '';
     fWords.value = record && record.wordCount != null ? record.wordCount : '';
     fNotes.value = record ? (record.notes || '') : '';
@@ -1416,7 +1454,9 @@
       status: formStatus,
       rating: formRating,
       startDate: fStart.value,
+      startTime: fStartTime.value,
       endDate: fEnd.value,
+      endTime: fEndTime.value,
       readingHours,
       wordCount,
       notes: fNotes.value.trim(),
