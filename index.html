@@ -1166,7 +1166,7 @@
       const yy = parseInt(dateCode.slice(0, 2), 10);
       const mm = dateCode.slice(2, 4);
       const dd = dateCode.slice(4, 6);
-      const endDate = `${2000 + yy}-${mm}-${dd}`;
+      const startDate = `${2000 + yy}-${mm}-${dd}`;
 
       let titleAuthor = rest;
       let status = 'finished';
@@ -1208,8 +1208,8 @@
         themeId: '',
         status,
         rating: 0,
-        startDate: '',
-        endDate,
+        startDate,
+        endDate: '',
         readingHours: null,
         wordCount: null,
         notes,
