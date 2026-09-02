@@ -2,7 +2,7 @@
   "name": "小说备忘录",
   "short_name": "备忘录",
   "start_url": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#f5f6f8",
   "theme_color": "#2f6b5e",
   "icons": [
