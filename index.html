@@ -13,8 +13,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+  @font-face { font-family: 'AppFont'; src: url('font.ttf') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }
   :root {
-    --app-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Segoe UI", sans-serif;
+    --app-font: 'AppFont', -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Segoe UI", sans-serif;
     --bg: #f5f6f8;
     --card: #ffffff;
     --text: #26333d;
@@ -871,12 +872,7 @@
   }
 
   function loadCustomFontFromStorage() {
-    try {
-      const saved = JSON.parse(localStorage.getItem('novel_memo_custom_font_v1') || 'null');
-      if (saved && saved.dataUrl) {
-        applyCustomFont(saved.dataUrl, saved.name);
-      }
-    } catch (e) {}
+    try { localStorage.removeItem('novel_memo_custom_font_v1'); } catch (e) {}
   }
 
   // ---------- 数据 ----------
