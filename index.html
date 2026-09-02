@@ -789,6 +789,20 @@
     <div style="font-size:11px;color:#8b98a3;margin-top:6px;">封面透明、无阴影、垂直居中；同一主题的书按顺序轮流使用封面</div>
     <input type="file" id="theme-cover-input" accept="image/*" multiple style="display:none">
 
+    <div class="section-title">阅读时长格式</div>
+    <div class="field">
+      <label>卡片上如何显示阅读时长</label>
+      <select id="set-duration-format">
+        <option value="cn">1小时1分</option>
+        <option value="cn-pad">1小时01分</option>
+        <option value="cn-min">1小时1分钟</option>
+        <option value="en">1h1m</option>
+        <option value="en-pad">1h01m</option>
+        <option value="hours">1.5小时</option>
+        <option value="minutes">90分钟</option>
+      </select>
+    </div>
+
     <div class="section-title">批量导入</div>
     <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
     <div class="io-row">
@@ -811,7 +825,7 @@
   const SETTINGS_KEY = 'novel_memo_settings_v1';
   let records = [];
   let themes = [];
-  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0 };
+  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn' };
   let customFontDataUrl = '';
   let currentFilter = 'all';
   let searchQuery = '';
@@ -844,7 +858,7 @@
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
       if (s && typeof s === 'object') {
-        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '' }, s);
+        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn' }, s);
       }
     } catch (e) {}
     document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
@@ -853,6 +867,8 @@
     document.getElementById('set-cover-width').value = settings.coverWidth;
     document.getElementById('set-cover-gap').value = settings.coverGap;
     document.getElementById('set-cover-radius').value = settings.coverRadius;
+    const durSel = document.getElementById('set-duration-format');
+    if (durSel) durSel.value = settings.durationFormat;
   }
   function saveSettings() {
     try {
@@ -1003,6 +1019,24 @@
     return sorted;
   }
 
+  function formatReadingHours(h) {
+    if (h === null || h === undefined || isNaN(h) || h <= 0) return '';
+    const totalMin = Math.round(h * 60);
+    const H = Math.floor(totalMin / 60);
+    const M = totalMin % 60;
+    const fmt = settings.durationFormat || 'cn';
+    switch (fmt) {
+      case 'cn-pad': return H + '小时' + String(M).padStart(2,'0') + '分';
+      case 'cn-min': return H + '小时' + M + '分钟';
+      case 'en': return H + 'h' + M + 'm';
+      case 'en-pad': return H + 'h' + String(M).padStart(2,'0') + 'm';
+      case 'hours': return H === 0 ? (M/60).toFixed(1).replace(/\.0$/,'') + '小时' : (h % 1 === 0 ? h : h.toFixed(1).replace(/\.0$/,'')) + '小时';
+      case 'minutes': return totalMin + '分钟';
+      case 'cn':
+      default: return (H ? H + '小时' : '') + (M || !H ? M + '分' : '');
+    }
+  }
+
   function render() {
     let shown = records;
     if (currentFilter !== 'all') shown = shown.filter(r => r.status === currentFilter);
@@ -1055,10 +1089,11 @@
         : '';
       const wc = (r.wordCount !== null && r.wordCount !== undefined && r.wordCount > 0)
         ? `<span class="meta-item">${BOOK_SVG} ${r.wordCount}w字</span>` : '';
-      const dur = (r.readingHours !== null && r.readingHours !== undefined && r.readingHours > 0)
+      const durText = formatReadingHours(r.readingHours);
+      const dur = durText
         ? `<span class="meta-item dur">
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-             ${r.readingHours} 小时
+             ${esc(durText)}
            </span>` : '';
       const endDateStr = formatEndDate(r);
       const endPart = endDateStr
@@ -1562,6 +1597,12 @@
       saveSettings();
       render();
     }
+  });
+  const durSel = document.getElementById('set-duration-format');
+  if (durSel) durSel.addEventListener('change', () => {
+    settings.durationFormat = durSel.value;
+    saveSettings();
+    render();
   });
 
   [$overlayEdit, $overlayIo].forEach(ov => {
