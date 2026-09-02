@@ -897,6 +897,8 @@
   function applyColorTheme(themeId) {
     const t = COLOR_THEMES[themeId] || COLOR_THEMES.forest;
     Object.keys(t).forEach(k => document.documentElement.style.setProperty('--' + k, t[k]));
+    document.documentElement.style.setProperty('--green', t.accent);
+    document.documentElement.style.setProperty('--green-soft', t['accent-soft']);
     document.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', b.dataset.colorTheme === (themeId || 'forest')));
     const mt = document.querySelector('meta[name="theme-color"]');
     if (mt) mt.setAttribute('content', t.accent);
