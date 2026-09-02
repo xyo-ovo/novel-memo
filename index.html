@@ -1046,10 +1046,10 @@
     const M = totalMin % 60;
     const fmt = settings.durationFormat || 'cn';
     switch (fmt) {
-      case 'cn-pad': return H + '小时' + String(M).padStart(2,'0') + '分';
-      case 'cn-min': return H + '小时' + M + '分钟';
-      case 'en': return H + 'h' + M + 'm';
-      case 'en-pad': return H + 'h' + String(M).padStart(2,'0') + 'm';
+      case 'cn-pad': return M === 0 ? H + '小时' : H + '小时' + String(M).padStart(2,'0') + '分';
+      case 'cn-min': return M === 0 ? H + '小时' : H + '小时' + M + '分钟';
+      case 'en': return M === 0 ? H + 'h' : H + 'h' + M + 'm';
+      case 'en-pad': return M === 0 ? H + 'h' : H + 'h' + String(M).padStart(2,'0') + 'm';
       case 'hours': return H === 0 ? (M/60).toFixed(1).replace(/\.0$/,'') + '小时' : (h % 1 === 0 ? h : h.toFixed(1).replace(/\.0$/,'')) + '小时';
       case 'minutes': return totalMin + '分钟';
       case 'cn':
