@@ -202,7 +202,21 @@
   .card-info { flex: 1; min-width: 0; }
   .card-title { font-size: 17px; font-weight: 650; line-height: 1.4; word-break: break-all; letter-spacing: .2px; }
   .card-author { font-size: 12.5px; color: var(--text-sub); margin-top: 4px; }
-  .card-genres { display: flex; flex-wrap: nowrap; gap: 5px; margin-top: 8px; }
+  .card-genres { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .card-category {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 999px;
+    padding: 3px 11px;
+    letter-spacing: .3px;
+    white-space: nowrap;
+  }
   .card-genre {
     display: inline-flex;
     align-items: center;
@@ -215,17 +229,6 @@
     padding: 3px 10px;
     letter-spacing: .3px;
     white-space: nowrap;
-  }
-  .card-theme-tag {
-    display: inline-block;
-    font-size: 10.5px;
-    color: var(--text-dim);
-    border: 1px dashed var(--line);
-    border-radius: 999px;
-    padding: 2px 9px;
-    margin-top: 6px;
-    margin-left: 6px;
-    letter-spacing: .3px;
   }
 
   .badge {
@@ -271,34 +274,6 @@
     border: 1px solid #f0f3f5;
   }
   .card-notes.expanded { -webkit-line-clamp: unset; display: block; }
-
-  .card-actions {
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    transform: translateY(-50%);
-    display: flex;
-    gap: 5px;
-    opacity: 0;
-    transition: opacity .15s;
-  }
-  .card:hover .card-actions,
-  .card:active .card-actions { opacity: 1; }
-  .card-actions button {
-    width: 34px; height: 34px;
-    border-radius: 10px;
-    border: 1px solid var(--line);
-    background: #fff;
-    color: var(--text-sub);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(35,45,55,.08);
-    transition: background .12s;
-  }
-  .card-actions button:active { background: #f3f5f7; }
-  .card-actions .del { color: var(--red); }
 
   .empty { text-align: center; padding: 70px 24px; color: var(--text-dim); }
   .empty .empty-icon {
@@ -396,20 +371,19 @@
   }
   .field textarea { min-height: 92px; resize: vertical; line-height: 1.65; }
   .field select { appearance: none; }
-  .field .hint { font-size: 11px; color: var(--text-dim); margin-top: 5px; }
+  .field .hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  /* 编辑弹窗里的分类快捷选择 */
-  .genre-chip-field { margin-top: -8px; }
-  .genre-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .genre-chips .gchip {
-    height: 30px;
-    padding: 0 13px;
+  /* 分类选择器 */
+  .category-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .category-chips .cchip {
+    height: 34px;
+    padding: 0 15px;
     border-radius: 999px;
     border: 1px solid var(--line);
     background: #fafbfc;
     color: var(--text-sub);
-    font-size: 12px;
+    font-size: 12.5px;
     font-family: inherit;
     cursor: pointer;
     display: inline-flex;
@@ -417,14 +391,14 @@
     transition: all .15s;
     white-space: nowrap;
   }
-  .genre-chips .gchip:active { transform: scale(.96); }
-  .genre-chips .gchip.on {
+  .category-chips .cchip:active { transform: scale(.96); }
+  .category-chips .cchip.on {
     background: var(--accent);
     border-color: var(--accent);
     color: #fff;
     font-weight: 600;
   }
-  .genre-chips .gempty { font-size: 12px; color: var(--text-dim); line-height: 30px; }
+  .category-chips .cempty { font-size: 12px; color: var(--text-dim); line-height: 34px; }
 
   .rating-picker { display: flex; gap: 4px; }
   .rating-picker button {
@@ -587,7 +561,7 @@
     cursor: pointer;
   }
 
-  /* 分类标签 */
+  /* 分类标签管理 */
   .category-list { display: flex; flex-wrap: wrap; gap: 8px; }
   .category-chip {
     display: inline-flex; align-items: center; gap: 2px;
@@ -771,8 +745,10 @@
         <input id="f-genre" type="text" placeholder="科幻、悬疑" autocomplete="off">
       </div>
     </div>
-    <div class="field genre-chip-field">
-      <div class="genre-chips" id="genre-chips"></div>
+    <div class="field">
+      <label>分类</label>
+      <div class="category-chips" id="category-chips"></div>
+      <div class="hint">选一个主分类，想加更多分类去「设置 → 分类标签」</div>
     </div>
     <div class="field">
       <label>阅读状态</label>
@@ -860,7 +836,7 @@
       <button id="btn-new-category">添加</button>
     </div>
     <div class="category-list" id="category-list"></div>
-    <div style="font-size:11px;color:#8b98a3;margin-top:8px;">分类会自动匹配「类型 / 标签」里包含该词的书；点顶部筛选项再点一次可取消。</div>
+    <div style="font-size:11px;color:#8b98a3;margin-top:8px;">分类是独立字段，和「类型 / 标签」互不影响；顶部筛选项点一次选中、再点一次取消。</div>
 
     <div class="section-title">主题与封面</div>
     <div class="new-theme-row">
@@ -939,6 +915,7 @@
   let searchQuery = '';
   let sortMode = 'recent';
   let editingId = null;
+  let formCategory = '';
 
   const STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7L5.8 21l1.6-7L2 9.3l7.1-.7Z"/></svg>';
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
@@ -976,6 +953,24 @@
   }
   function splitTags(s) {
     return [...new Set(String(s || '').split(/[,，、/;；\n]+/).map(t => t.trim()).filter(Boolean))];
+  }
+  // 老数据迁移：把以前混在「类型/标签」里的分类词，挪到独立的 category 字段
+  function migrateLegacyCategories() {
+    if (!categories.length) return;
+    let changed = false;
+    records.forEach(r => {
+      if (typeof r.category === 'undefined') {
+        r.category = '';
+        const tags = splitTags(r.genre);
+        const hit = tags.filter(t => categories.indexOf(t) >= 0);
+        if (hit.length) {
+          r.category = hit[0];
+          r.genre = tags.filter(t => t !== hit[0]).join('、');
+        }
+        changed = true;
+      }
+    });
+    if (changed) save();
   }
 
   // ---------- 设置 ----------
@@ -1079,6 +1074,7 @@
       if (typeof r.readingHours === 'undefined') r.readingHours = null;
       if (typeof r.wordCount === 'undefined') r.wordCount = null;
       if (typeof r.themeId === 'undefined') r.themeId = '';
+      if (typeof r.category === 'undefined') r.category = '';
     });
   }
   function save() {
@@ -1110,7 +1106,7 @@
   const $newThemeName = document.getElementById('new-theme-name');
   const $categoryList = document.getElementById('category-list');
   const $newCategoryName = document.getElementById('new-category-name');
-  const $genreChips = document.getElementById('genre-chips');
+  const $categoryChips = document.getElementById('category-chips');
 
   const fTitle = document.getElementById('f-title');
   const fAuthor = document.getElementById('f-author');
@@ -1145,22 +1141,15 @@
     $filterRow.innerHTML = parts.join('');
   }
 
-  // ---------- 编辑弹窗里的分类快捷按钮 ----------
-  function getGenreTags() {
-    return splitTags(fGenre.value);
-  }
-  function setGenreTags(tags) {
-    fGenre.value = [...new Set(tags)].join('、');
-  }
-  function renderGenreChips() {
-    if (!$genreChips) return;
+  // ---------- 编辑弹窗里的分类选择器（单选） ----------
+  function renderCategoryChips() {
+    if (!$categoryChips) return;
     if (categories.length === 0) {
-      $genreChips.innerHTML = '<span class="gempty">还没有分类，去「设置 → 分类标签」新建</span>';
+      $categoryChips.innerHTML = '<span class="cempty">还没有分类，去「设置 → 分类标签」新建</span>';
       return;
     }
-    const cur = getGenreTags();
-    $genreChips.innerHTML = categories.map(c =>
-      '<button type="button" class="gchip' + (cur.includes(c) ? ' on' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>'
+    $categoryChips.innerHTML = categories.map(c =>
+      '<button type="button" class="cchip' + (formCategory === c ? ' on' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>'
     ).join('');
   }
 
@@ -1242,7 +1231,7 @@
   function render() {
     let shown = records;
     if (currentCategory) {
-      shown = shown.filter(r => splitTags(r.genre).includes(currentCategory));
+      shown = shown.filter(r => r.category === currentCategory);
     }
     if (currentFilter !== 'all') shown = shown.filter(r => r.status === currentFilter);
     if (searchQuery.trim()) {
@@ -1284,8 +1273,10 @@
         ? `<div class="stars">${[1,2,3,4,5].map(i =>
             `<span class="${i <= r.rating ? 'on' : ''}">${STAR_SVG}</span>`
           ).join('')}</div>` : '';
+      const catTag = r.category ? `<span class="card-category">${esc(r.category)}</span>` : '';
       const tags = splitTags(r.genre);
-      const genreTag = tags.length ? `<div class="card-genres">${tags.map(t => `<span class="card-genre">${esc(t)}</span>`).join('')}</div>` : '';
+      const genreTags = tags.map(t => `<span class="card-genre">${esc(t)}</span>`).join('');
+      const tagsRow = (catTag || genreTags) ? `<div class="card-genres">${catTag}${genreTags}</div>` : '';
       const notes = r.notes ? `<div class="card-notes">${esc(r.notes)}</div>` : '';
       const coverUrl = coverMap[r.id];
       const coverHtml = coverUrl
@@ -1319,7 +1310,7 @@
                 <div class="card-info">
                   <div class="card-title">${esc(r.title)}</div>
                   ${authorLine}
-                  ${genreTag}
+                  ${tagsRow}
                 </div>
                 <span class="badge ${meta.cls}">${meta.text}</span>
               </div>
@@ -1482,6 +1473,7 @@
         title,
         author,
         genre: '',
+        category: '',
         themeId: '',
         status,
         rating: 0,
@@ -1558,6 +1550,7 @@
             title: item.title,
             author: item.author || '',
             genre: item.genre || '',
+            category: item.category || '',
             themeId: item.themeId || '',
             status: item.status || 'finished',
             rating: item.rating || 0,
@@ -1618,9 +1611,10 @@
     fNotes.value = record ? (record.notes || '') : '';
     formStatus = record ? (record.status || 'reading') : 'reading';
     formRating = record ? (record.rating || 0) : 0;
+    formCategory = record ? (record.category || '') : '';
     updateStatusPicker();
     updateRatingPicker();
-    renderGenreChips();
+    renderCategoryChips();
     const btnDel = document.getElementById('btn-delete');
     if (btnDel) btnDel.style.display = record ? '' : 'none';
     $overlayEdit.classList.add('show');
@@ -1667,6 +1661,7 @@
       title,
       author: fAuthor.value.trim(),
       genre: fGenre.value.trim(),
+      category: formCategory,
       status: formStatus,
       rating: formRating,
       startDate: normalizeDateInput(fStart.value),
@@ -1749,7 +1744,7 @@
     try { localStorage.removeItem('novel_memo_custom_font_v1'); } catch (e) {}
   });
 
-  // 分类
+  // 分类管理
   document.getElementById('btn-new-category').addEventListener('click', () => {
     const name = $newCategoryName.value.trim();
     if (!name) { alert('请输入分类名称'); return; }
@@ -1759,7 +1754,7 @@
     saveCategories();
     renderCategories();
     renderFilterRow();
-    renderGenreChips();
+    renderCategoryChips();
     render();
     $newCategoryName.value = '';
   });
@@ -1773,27 +1768,24 @@
     if (!confirm(`删除分类「${name}」？`)) return;
     categories.splice(idx, 1);
     if (currentCategory === name) currentCategory = '';
+    if (formCategory === name) formCategory = '';
     saveCategories();
     renderCategories();
     renderFilterRow();
-    renderGenreChips();
+    renderCategoryChips();
     render();
   });
 
-  // 编辑弹窗里的分类快捷按钮
-  if ($genreChips) {
-    $genreChips.addEventListener('click', (e) => {
-      const btn = e.target.closest('.gchip');
+  // 编辑弹窗的分类选择（单选）
+  if ($categoryChips) {
+    $categoryChips.addEventListener('click', (e) => {
+      const btn = e.target.closest('.cchip');
       if (!btn) return;
       const name = btn.dataset.cat;
-      const tags = getGenreTags();
-      const i = tags.indexOf(name);
-      if (i >= 0) tags.splice(i, 1); else tags.push(name);
-      setGenreTags(tags);
-      renderGenreChips();
+      formCategory = (formCategory === name) ? '' : name;
+      renderCategoryChips();
     });
   }
-  fGenre.addEventListener('input', renderGenreChips);
 
   // 主题
   document.getElementById('btn-new-theme').addEventListener('click', () => {
@@ -1954,6 +1946,7 @@
   loadThemes();
   loadCategories();
   load();
+  migrateLegacyCategories();
   renderFilterRow();
   render();
 })();
