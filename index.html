@@ -233,6 +233,7 @@
   .badge-finished { background: var(--green-soft); color: var(--green); }
   .badge-reading  { background: var(--blue-soft);  color: var(--blue); }
   .badge-dropped  { background: var(--red-soft);   color: var(--red); }
+  .badge-wishlist { background: var(--line);       color: var(--text-sub); }
 
   .meta-line { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11.5px; color: var(--text-dim); }
   .meta-line .meta-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -241,7 +242,7 @@
   .meta-line .dur svg { color: var(--accent); }
   .stars { margin-top: 10px; display: flex; gap: 3px; }
   .stars svg { color: #dfe4e8; }
-  .stars svg.on { color: var(--gold); }
+  .stars span.on svg { color: var(--gold); }
 
   .card-notes {
     margin-top: 12px;
@@ -410,6 +411,7 @@
     transition: all .15s;
     letter-spacing: .3px;
   }
+  .status-picker button.on-wishlist { background: var(--line);        border-color: var(--line);   color: var(--text-sub); font-weight: 600; }
   .status-picker button.on-finished { background: var(--green-soft); border-color: #bcd9cd; color: var(--green); font-weight: 600; }
   .status-picker button.on-reading  { background: var(--blue-soft);  border-color: #bcd0e5; color: var(--blue);  font-weight: 600; }
   .status-picker button.on-dropped  { background: var(--red-soft);   border-color: #debdbd; color: var(--red);   font-weight: 600; }
@@ -425,8 +427,8 @@
     letter-spacing: .3px;
     transition: background .15s;
   }
-  #btn-cancel { background: #f0f2f5; color: var(--text-sub); }
-  #btn-cancel:active { background: #e5e8ec; }
+  #btn-back { background: #f0f2f5; color: var(--text-sub); }
+  #btn-back:active { background: #e5e8ec; }
   #btn-save { background: var(--accent); color: #fff; }
   #btn-save:active { background: var(--accent-strong); }
 
@@ -697,6 +699,8 @@
         <option value="recent">阅读时间 · 新→旧</option>
         <option value="title">书名 · A→Z</option>
         <option value="hours">阅读时长 · 长→短</option>
+        <option value="rating">评分 · 高→低</option>
+        <option value="words">字数 · 多→少</option>
       </select>
     </div>
   </div>
@@ -739,6 +743,7 @@
     <div class="field">
       <label>阅读状态</label>
       <div class="status-picker" id="status-picker">
+        <button data-status="wishlist">想读</button>
         <button data-status="reading">在读</button>
         <button data-status="finished">读完</button>
         <button data-status="dropped">弃读</button>
@@ -813,7 +818,7 @@
       <span class="font-status" id="font-status">未加载自定义字体</span>
       <button id="btn-font-remove">移除</button>
     </div>
-    <div style="font-size:11px;color:#8b98a3;margin-top:6px;">支持 .ttf / .otf / .woff；文件过大时可能无法永久保存（本次打开仍生效）</div>
+    <div style="font-size:11px;color:#8b98a3;margin-top:6px;">支持 .ttf / .otf / .woff；字体文件较大时浏览器可能存不下，那样刷新后需要重新选择</div>
     <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none">
 
     <div class="section-title">分类标签</div>
@@ -891,6 +896,7 @@
   const THEMES_KEY = 'novel_memo_themes_v1';
   const SETTINGS_KEY = 'novel_memo_settings_v1';
   const CATEGORIES_KEY = 'novel_memo_categories_v1';
+  const FONT_KEY = 'novel_memo_custom_font_v1';
   let records = [];
   let themes = [];
   let categories = [];
@@ -1037,7 +1043,7 @@
     reader.onload = (e) => {
       applyCustomFont(e.target.result, file.name);
       try {
-        localStorage.setItem('novel_memo_custom_font_v1', JSON.stringify({ dataUrl: e.target.result, name: file.name }));
+        localStorage.setItem(FONT_KEY, JSON.stringify({ dataUrl: e.target.result, name: file.name }));
       } catch (err) {
         alert('字体文件过大，浏览器本地存储放不下。\n本次打开仍然生效，刷新后需要重新选择。');
       }
@@ -1045,8 +1051,14 @@
     reader.readAsDataURL(file);
   }
 
+  // 启动时把上次存下的自定义字体真正加载回来
   function loadCustomFontFromStorage() {
-    try { localStorage.removeItem('novel_memo_custom_font_v1'); } catch (e) {}
+    try {
+      const raw = localStorage.getItem(FONT_KEY);
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      if (obj && obj.dataUrl) applyCustomFont(obj.dataUrl, obj.name || '自定义字体');
+    } catch (e) {}
   }
 
   // ---------- 数据 ----------
@@ -1059,7 +1071,6 @@
     records.forEach(r => {
       if (typeof r.readingHours === 'undefined') r.readingHours = null;
       if (typeof r.wordCount === 'undefined') r.wordCount = null;
-      if (typeof r.themeId === 'undefined') r.themeId = '';
       if (typeof r.category === 'undefined') r.category = '';
     });
   }
@@ -1109,7 +1120,7 @@
   let formRating = 0;
 
   // ---------- 筛选行 ----------
-  const STATUS_TABS = [['finished', '读完'], ['reading', '在读'], ['dropped', '弃读']];
+  const STATUS_TABS = [['wishlist', '想读'], ['reading', '在读'], ['finished', '读完'], ['dropped', '弃读']];
 
   function renderFilterRow() {
     if (!$filterRow) return;
@@ -1152,6 +1163,7 @@
 
   // ---------- 渲染 ----------
   const STATUS_META = {
+    wishlist: { text: '想读', cls: 'badge-wishlist' },
     finished: { text: '读完', cls: 'badge-finished' },
     reading:  { text: '在读', cls: 'badge-reading' },
     dropped:  { text: '弃读', cls: 'badge-dropped' },
@@ -1164,11 +1176,11 @@
         (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN', { numeric: true })
       );
     } else if (sortMode === 'hours') {
-      sorted.sort((a, b) => {
-        const ah = a.readingHours ?? -1;
-        const bh = b.readingHours ?? -1;
-        return bh - ah;
-      });
+      sorted.sort((a, b) => (b.readingHours ?? -1) - (a.readingHours ?? -1));
+    } else if (sortMode === 'rating') {
+      sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortMode === 'words') {
+      sorted.sort((a, b) => (b.wordCount ?? -1) - (a.wordCount ?? -1));
     } else {
       sorted.sort((a, b) => {
         const at = a.endDate || a.startDate || a.updatedAt || a.createdAt || '';
@@ -1219,7 +1231,12 @@
     if (currentCategory) {
       shown = shown.filter(r => r.category === currentCategory);
     }
-    if (currentFilter !== 'all') shown = shown.filter(r => r.status === currentFilter);
+    if (currentFilter === 'all') {
+      // 「全部」= 读过的书，不含想读
+      shown = shown.filter(r => r.status !== 'wishlist');
+    } else {
+      shown = shown.filter(r => r.status === currentFilter);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       shown = shown.filter(r =>
@@ -1238,6 +1255,16 @@
 
     if (shown.length === 0) {
       const isFirst = records.length === 0;
+      const wishOnly = !isFirst && currentFilter === 'all' && !currentCategory && !searchQuery.trim()
+        && records.every(r => r.status === 'wishlist');
+      let emptyMsg;
+      if (isFirst) {
+        emptyMsg = '还没有记录<br>点击右下角加号添加第一本<br>或点右上角菜单批量导入旧数据';
+      } else if (wishOnly) {
+        emptyMsg = '这里还没有读过的书<br>「想读」的书在顶部「想读」里';
+      } else {
+        emptyMsg = '没有找到匹配的记录';
+      }
       $list.innerHTML = `
         <div class="empty">
           <div class="empty-icon">
@@ -1246,9 +1273,7 @@
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
             </svg>
           </div>
-          <p>${isFirst
-            ? '还没有记录<br>点击右下角加号添加第一本<br>或点右上角菜单批量导入旧数据'
-            : '没有找到匹配的记录'}</p>
+          <p>${emptyMsg}</p>
         </div>`;
       return;
     }
@@ -1459,7 +1484,6 @@
         author,
         genre: '',
         category: '',
-        themeId: '',
         status,
         rating: 0,
         startDate,
@@ -1536,7 +1560,6 @@
             author: item.author || '',
             genre: item.genre || '',
             category: item.category || '',
-            themeId: item.themeId || '',
             status: item.status || 'finished',
             rating: item.rating || 0,
             startDate: item.startDate || '',
@@ -1726,7 +1749,7 @@
   });
   document.getElementById('btn-font-remove').addEventListener('click', () => {
     applyCustomFont('', '');
-    try { localStorage.removeItem('novel_memo_custom_font_v1'); } catch (e) {}
+    try { localStorage.removeItem(FONT_KEY); } catch (e) {}
   });
 
   // 分类管理
