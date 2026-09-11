@@ -995,23 +995,6 @@
     <div class="sheet">
       <h2>设置与数据</h2>
 
-      <div class="section-title">云端备份（GitHub）</div>
-      <div class="field">
-        <label>访问令牌 Token（需 gist 权限）</label>
-        <input id="gist-token" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
-        <div class="hint">只保存在本机浏览器里，不会上传到别处。生成方式：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → 勾选 gist</div>
-      </div>
-      <div class="field">
-        <label>Gist ID（换设备时填入，平时自动填）</label>
-        <input id="gist-id" type="text" placeholder="上传一次后自动生成" autocomplete="off">
-        <div class="hint" id="gist-id-hint"></div>
-      </div>
-      <div class="io-row">
-        <button id="btn-gist-upload" class="primary">上传到 GitHub</button>
-        <button id="btn-gist-download">从 GitHub 恢复</button>
-      </div>
-      <div class="io-result" id="gist-result"></div>
-
       <div class="section-title">字号</div>
       <div class="color-theme-row" id="font-size-row">
         <button class="color-swatch" data-font-size="0.9">小</button>
@@ -1101,6 +1084,23 @@
       <div class="io-result" id="io-result"></div>
       <textarea id="backup-text" readonly></textarea>
       <input type="file" id="file-input" accept=".json,application/json" style="display:none">
+
+      <div class="section-title">云端备份（GitHub）</div>
+      <div class="field">
+        <label>访问令牌 Token（需 gist 权限）</label>
+        <input id="gist-token" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+        <div class="hint">只保存在本机浏览器里，不会上传到别处。生成方式：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → 勾选 gist</div>
+      </div>
+      <div class="field">
+        <label>Gist ID（换设备时填入，平时自动填）</label>
+        <input id="gist-id" type="text" placeholder="上传一次后自动生成" autocomplete="off">
+        <div class="hint" id="gist-id-hint"></div>
+      </div>
+      <div class="io-row">
+        <button id="btn-gist-upload" class="primary">上传到 GitHub</button>
+        <button id="btn-gist-download">从 GitHub 恢复</button>
+      </div>
+      <div class="io-result" id="gist-result"></div>
     </div>
   </div>
 </div>
