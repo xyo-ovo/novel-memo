@@ -80,6 +80,7 @@
   .stats .st-done .num { color: var(--green); }
   .stats .st-reading .num { color: var(--blue); }
   .stats .st-dropped .num { color: var(--red); }
+  .stats .st-wishlist .num { color: var(--text-sub); }
   #menu-btn {
     width: 40px; height: 40px;
     border-radius: 12px;
@@ -675,6 +676,7 @@
         <div class="stat st-done"><div class="num" id="stat-finished">0</div><div class="lbl">读完</div></div>
         <div class="stat st-reading"><div class="num" id="stat-reading">0</div><div class="lbl">在读</div></div>
         <div class="stat st-dropped"><div class="num" id="stat-dropped">0</div><div class="lbl">弃读</div></div>
+        <div class="stat st-wishlist" id="stat-wishlist-box" style="display:none"><div class="num" id="stat-wishlist">0</div><div class="lbl">想读</div></div>
       </div>
       <button id="menu-btn" title="设置与数据">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
@@ -817,7 +819,7 @@
       <span class="font-status" id="font-status">未加载自定义字体</span>
       <button id="btn-font-remove">移除</button>
     </div>
-    <div style="font-size:11px;color:#8b98a3;margin-top:6px;">支持 .ttf / .otf / .woff；字体文件较大时浏览器可能存不下，那样刷新后需要重新选择</div>
+    <div style="font-size:11px;color:#8b98a3;margin-top:6px;">支持 .ttf / .otf / .woff / .woff2；字体存在浏览器本地数据库里，刷新后依然生效</div>
     <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none">
 
     <div class="section-title">分类标签</div>
@@ -895,12 +897,10 @@
   const THEMES_KEY = 'novel_memo_themes_v1';
   const SETTINGS_KEY = 'novel_memo_settings_v1';
   const CATEGORIES_KEY = 'novel_memo_categories_v1';
-  const FONT_KEY = 'novel_memo_custom_font_v1';
   let records = [];
   let themes = [];
   let categories = [];
   let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest' };
-  let customFontDataUrl = '';
   let currentFilter = 'all';
   let currentCategory = '';
   let searchQuery = '';
@@ -1005,29 +1005,90 @@
     } catch (e) {}
   }
 
+  // ---------- 字体存储：用 IndexedDB（localStorage 太小，装不下字体） ----------
+  const FONT_DB_NAME = 'novel_memo_fonts';
+  const FONT_STORE = 'files';
+  const FONT_ITEM_KEY = 'customFont';
+
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) { reject(new Error('no indexedDB')); return; }
+      const req = indexedDB.open(FONT_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(FONT_STORE)) db.createObjectStore(FONT_STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function idbPut(key, val) {
+    return idbOpen().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(FONT_STORE, 'readwrite');
+      tx.objectStore(FONT_STORE).put(val, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+  function idbGet(key) {
+    return idbOpen().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(FONT_STORE, 'readonly');
+      const r = tx.objectStore(FONT_STORE).get(key);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    }));
+  }
+  function idbDelete(key) {
+    return idbOpen().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(FONT_STORE, 'readwrite');
+      tx.objectStore(FONT_STORE).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
   // ---------- 自定义字体 ----------
-  function applyCustomFont(dataUrl, fileName) {
-    customFontDataUrl = dataUrl;
-    if (dataUrl) {
-      let styleEl = document.getElementById('custom-font-style');
-      if (!styleEl) {
-        styleEl = document.createElement('style');
-        styleEl.id = 'custom-font-style';
-        document.head.appendChild(styleEl);
-      }
-      const fmt = fileName && fileName.toLowerCase().endsWith('.woff') ? 'woff'
-        : fileName && fileName.toLowerCase().endsWith('.woff2') ? 'woff2'
-        : 'truetype';
-      styleEl.textContent = '@font-face { font-family: \'CustomBookFont\'; src: url(\'' + dataUrl + '\') format(\'' + fmt + '\'); font-weight: normal; font-style: normal; }';
-      document.documentElement.style.setProperty('--app-font', "'CustomBookFont', -apple-system, 'PingFang SC', sans-serif");
-      document.getElementById('font-status').textContent = '已加载：' + (fileName || '自定义字体');
-      document.getElementById('btn-font-remove').style.display = 'block';
-    } else {
-      const styleEl = document.getElementById('custom-font-style');
-      if (styleEl) styleEl.textContent = '';
-      document.documentElement.style.setProperty('--app-font', '-apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Segoe UI", sans-serif');
-      document.getElementById('font-status').textContent = '未加载自定义字体';
-      document.getElementById('btn-font-remove').style.display = 'none';
+  let currentFontUrl = '';
+
+  function fontFormat(name) {
+    const n = String(name || '').toLowerCase();
+    if (n.endsWith('.woff2')) return 'woff2';
+    if (n.endsWith('.woff')) return 'woff';
+    if (n.endsWith('.otf')) return 'opentype';
+    return 'truetype';
+  }
+
+  function applyCustomFontUrl(url, fileName) {
+    if (!url) { clearCustomFont(); return; }
+    if (currentFontUrl && currentFontUrl !== url) {
+      try { URL.revokeObjectURL(currentFontUrl); } catch (e) {}
+    }
+    currentFontUrl = url;
+    let styleEl = document.getElementById('custom-font-style');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'custom-font-style';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = '@font-face { font-family: \'CustomBookFont\'; src: url(\'' + url + '\') format(\'' + fontFormat(fileName) + '\'); font-weight: normal; font-style: normal; }';
+    document.documentElement.style.setProperty('--app-font', "'CustomBookFont', -apple-system, 'PingFang SC', sans-serif");
+    const st = document.getElementById('font-status');
+    if (st) st.textContent = '已加载：' + (fileName || '自定义字体');
+    const rm = document.getElementById('btn-font-remove');
+    if (rm) rm.style.display = 'block';
+  }
+
+  function clearCustomFont() {
+    const styleEl = document.getElementById('custom-font-style');
+    if (styleEl) styleEl.textContent = '';
+    document.documentElement.style.setProperty('--app-font', "'AppFont', -apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"PingFang SC\", \"HarmonyOS Sans SC\", \"MiSans\", \"Segoe UI\", sans-serif");
+    const st = document.getElementById('font-status');
+    if (st) st.textContent = '未加载自定义字体';
+    const rm = document.getElementById('btn-font-remove');
+    if (rm) rm.style.display = 'none';
+    if (currentFontUrl) {
+      try { URL.revokeObjectURL(currentFontUrl); } catch (e) {}
+      currentFontUrl = '';
     }
   }
 
@@ -1038,26 +1099,19 @@
       alert('请选择 .ttf / .otf / .woff 字体文件');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      applyCustomFont(e.target.result, file.name);
-      try {
-        localStorage.setItem(FONT_KEY, JSON.stringify({ dataUrl: e.target.result, name: file.name }));
-      } catch (err) {
-        alert('字体文件过大，浏览器本地存储放不下。\n本次打开仍然生效，刷新后需要重新选择。');
-      }
-    };
-    reader.readAsDataURL(file);
+    const url = URL.createObjectURL(file);
+    applyCustomFontUrl(url, file.name);
+    idbPut(FONT_ITEM_KEY, { blob: file, name: file.name }).catch(() => {
+      alert('字体保存失败，刷新后可能需要重新选择');
+    });
   }
 
-  // 启动时把上次存下的自定义字体真正加载回来
   function loadCustomFontFromStorage() {
-    try {
-      const raw = localStorage.getItem(FONT_KEY);
-      if (!raw) return;
-      const obj = JSON.parse(raw);
-      if (obj && obj.dataUrl) applyCustomFont(obj.dataUrl, obj.name || '自定义字体');
-    } catch (e) {}
+    return idbGet(FONT_ITEM_KEY).then((obj) => {
+      if (!obj || !obj.blob) return;
+      const url = URL.createObjectURL(obj.blob);
+      applyCustomFontUrl(url, obj.name);
+    }).catch(() => {});
   }
 
   // ---------- 数据 ----------
@@ -1251,6 +1305,9 @@
     document.getElementById('stat-finished').textContent = count('finished');
     document.getElementById('stat-reading').textContent = count('reading');
     document.getElementById('stat-dropped').textContent = count('dropped');
+    const wishN = count('wishlist');
+    document.getElementById('stat-wishlist').textContent = wishN;
+    document.getElementById('stat-wishlist-box').style.display = wishN > 0 ? '' : 'none';
 
     if (shown.length === 0) {
       const isFirst = records.length === 0;
@@ -1747,8 +1804,8 @@
     e.target.value = '';
   });
   document.getElementById('btn-font-remove').addEventListener('click', () => {
-    applyCustomFont('', '');
-    try { localStorage.removeItem(FONT_KEY); } catch (e) {}
+    clearCustomFont();
+    idbDelete(FONT_ITEM_KEY).catch(() => {});
   });
 
   // 分类管理
@@ -1969,7 +2026,7 @@
 
   // ---------- 启动 ----------
   loadSettings();
-  loadCustomFontFromStorage();
+  loadCustomFontFromStorage().catch(() => {});
   loadThemes();
   loadCategories();
   load();
