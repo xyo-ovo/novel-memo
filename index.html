@@ -39,13 +39,11 @@
     --shadow-card: 0 1px 2px rgba(35,45,55,.03), 0 6px 24px rgba(35,45,55,.05);
     --shadow-fab: 0 10px 30px rgba(47,107,94,.30);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    /* 封面显示设置（可调） */
     --cover-width: 64px;
     --cover-gap: 14px;
     --cover-radius: 0px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  /* 表单控件默认不继承字体，这里统一让它们跟随页面字体 */
   button, input, select, textarea { font-family: inherit; }
   html, body {
     height: 100%;
@@ -239,7 +237,6 @@
   .badge-reading  { background: var(--blue-soft);   color: var(--blue); }
   .badge-dropped  { background: var(--orange-soft); color: var(--orange); }
   .badge-wishlist { background: var(--line);        color: var(--text-sub); }
-  /* 弃读用斜杠、想读用空心圆，和实心圆拉开区分 */
   .badge-dropped::before {
     width: 8px; height: 2px;
     border-radius: 1px;
@@ -400,6 +397,59 @@
   .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: #e2e6ea; margin: -10px auto 18px; }
   .sheet h2 { font-size: 18px; font-weight: 650; margin-bottom: 20px; text-align: center; letter-spacing: .3px; }
 
+  /* ---------- 设置面板：居中悬浮卡片 ---------- */
+  #overlay-io { align-items: center; justify-content: center; padding: 18px; }
+  .modal-wrap {
+    position: relative;
+    width: min(100%, 520px);
+    max-height: 86vh;
+    display: flex;
+  }
+  #overlay-io .sheet {
+    width: 100%;
+    max-height: 86vh;
+    border-radius: 22px;
+    padding: 24px 22px 26px;
+    transform: translateY(16px) scale(.97);
+    box-shadow: 0 18px 60px rgba(30,40,50,.24);
+  }
+  #overlay-io.show .sheet { transform: translateY(0) scale(1); }
+  #overlay-io .sheet-grip { display: none; }
+  .sheet-close {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: #f0f2f5;
+    color: var(--text-sub);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 6;
+    transition: background .15s;
+  }
+  .sheet-close:active { background: #e2e6ea; }
+
+  /* 字号自定义输入 */
+  .fs-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .fs-custom-row .fs-label { font-size: 12px; color: var(--text-dim); }
+  .fs-custom-row input {
+    width: 92px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #fafbfc;
+    color: var(--text);
+    padding: 0 10px;
+    font-size: 13px;
+    outline: none;
+    text-align: center;
+  }
+  .fs-custom-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,107,94,.08); }
+  .fs-custom-row .fs-hint { font-size: 11px; color: var(--text-dim); }
+
   .field { margin-bottom: 16px; }
   .field label {
     display: block;
@@ -436,7 +486,6 @@
   .field .hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  /* 分类选择器 */
   .category-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .category-chips .cchip {
     height: 34px;
@@ -507,7 +556,6 @@
   #btn-save { background: var(--accent); color: #fff; }
   #btn-save:active { background: var(--accent-strong); }
 
-  /* 数据管理面板 */
   .section-title {
     font-size: 12px;
     font-weight: 700;
@@ -520,7 +568,6 @@
   }
   .section-title:first-of-type { margin-top: 0; border-top: none; padding-top: 0; }
 
-  /* 字体上传 */
   .font-upload-row { display: flex; gap: 8px; align-items: center; }
   .font-upload-row button {
     flex-shrink: 0;
@@ -555,7 +602,6 @@
     display: none;
   }
 
-  /* 主题管理 */
   .theme-item {
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
@@ -624,7 +670,6 @@
     cursor: pointer;
   }
 
-  /* 分类标签管理 */
   .category-list { display: flex; flex-wrap: wrap; gap: 8px; }
   .category-chip {
     display: inline-flex; align-items: center; gap: 2px;
@@ -650,7 +695,6 @@
   }
   .category-chip .x:active { background: #eceff2; }
 
-  /* 封面显示设置 */
   .cover-settings-row { display: flex; gap: 10px; }
   .cover-settings-row .mini-field { flex: 1; min-width: 0; }
   .cover-settings-row label {
@@ -886,91 +930,101 @@
 
 <!-- 设置与数据弹窗 -->
 <div class="overlay" id="overlay-io">
-  <div class="sheet">
-    <div class="sheet-grip"></div>
-    <h2>设置与数据</h2>
+  <div class="modal-wrap">
+    <button class="sheet-close" id="btn-io-close" title="关闭">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+    <div class="sheet">
+      <h2>设置与数据</h2>
 
-    <div class="section-title">字号</div>
-    <div class="color-theme-row" id="font-size-row">
-      <button class="color-swatch" data-font-size="0.92">小</button>
-      <button class="color-swatch" data-font-size="1">标准</button>
-      <button class="color-swatch" data-font-size="1.1">大</button>
-      <button class="color-swatch" data-font-size="1.22">特大</button>
-    </div>
-
-    <div class="section-title">自定义字体</div>
-    <div class="font-upload-row">
-      <button id="btn-font-upload">选择字体文件</button>
-      <span class="font-status" id="font-status">未加载自定义字体</span>
-      <button id="btn-font-remove">移除</button>
-    </div>
-    <div style="font-size:11px;color:#8b98a3;margin-top:6px;">支持 .ttf / .otf / .woff / .woff2；字体存在浏览器本地数据库里，刷新后依然生效</div>
-    <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none">
-
-    <div class="section-title">分类标签</div>
-    <div class="new-theme-row">
-      <input id="new-category-name" type="text" placeholder="新建分类，例如：校园" autocomplete="off">
-      <button id="btn-new-category">添加</button>
-    </div>
-    <div class="category-list" id="category-list"></div>
-    <div style="font-size:11px;color:#8b98a3;margin-top:8px;">分类是独立字段，和「类型 / 标签」互不影响；顶部筛选项点一次选中、再点一次取消。</div>
-
-    <div class="section-title">主题与封面</div>
-    <div class="new-theme-row">
-      <input id="new-theme-name" type="text" placeholder="新建主题名称，例如：春日书单" autocomplete="off">
-      <button id="btn-new-theme">新建</button>
-    </div>
-    <div id="theme-list"></div>
-    <div class="cover-settings-row" style="margin-top:12px;">
-      <div class="mini-field">
-        <label>封面宽度（px）</label>
-        <input id="set-cover-width" type="number" min="30" max="200" step="1" value="64">
+      <div class="section-title">字号</div>
+      <div class="color-theme-row" id="font-size-row">
+        <button class="color-swatch" data-font-size="0.9">小</button>
+        <button class="color-swatch" data-font-size="1">标准</button>
+        <button class="color-swatch" data-font-size="1.1">大</button>
+        <button class="color-swatch" data-font-size="1.25">特大</button>
       </div>
-      <div class="mini-field">
-        <label>封面与文字间距（px）</label>
-        <input id="set-cover-gap" type="number" min="0" max="80" step="1" value="14">
+      <div class="fs-custom-row">
+        <span class="fs-label">自定义</span>
+        <input id="fs-custom-input" type="number" min="0.7" max="2" step="0.05" inputmode="decimal" placeholder="1">
+        <span class="fs-label">倍</span>
+        <span class="fs-hint">0.7 到 2</span>
       </div>
-      <div class="mini-field">
-        <label>封面圆角（px）</label>
-        <input id="set-cover-radius" type="number" min="0" max="30" step="1" value="0">
+
+      <div class="section-title">自定义字体</div>
+      <div class="font-upload-row">
+        <button id="btn-font-upload">选择字体文件</button>
+        <span class="font-status" id="font-status">未加载自定义字体</span>
+        <button id="btn-font-remove">移除</button>
       </div>
-    </div>
-    <div style="font-size:11px;color:#8b98a3;margin-top:6px;">封面透明、无阴影、垂直居中；同一主题的书按顺序轮流使用封面</div>
-    <input type="file" id="theme-cover-input" accept="image/*" multiple style="display:none">
+      <div style="font-size:11px;color:#8b98a3;margin-top:6px;">支持 .ttf / .otf / .woff / .woff2；字体存在浏览器本地数据库里，刷新后依然生效</div>
+      <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none">
 
-    <div class="section-title">配色主题</div>
-    <div class="color-theme-row" id="color-theme-row">
-      <button class="color-swatch" data-color-theme="forest" title="森绿"><span class="dot" style="background:#2f6b5e"></span>森绿</button>
-      <button class="color-swatch" data-color-theme="mist" title="雾蓝"><span class="dot" style="background:#4a7fa5"></span>雾蓝</button>
-      <button class="color-swatch" data-color-theme="caramel" title="焦糖"><span class="dot" style="background:#a06b4a"></span>焦糖</button>
-      <button class="color-swatch" data-color-theme="sakura" title="樱粉"><span class="dot" style="background:#b06a7b"></span>樱粉</button>
-      <button class="color-swatch" data-color-theme="night" title="夜间"><span class="dot" style="background:#5ea88d"></span>夜间</button>
-    </div>
+      <div class="section-title">分类标签</div>
+      <div class="new-theme-row">
+        <input id="new-category-name" type="text" placeholder="新建分类，例如：校园" autocomplete="off">
+        <button id="btn-new-category">添加</button>
+      </div>
+      <div class="category-list" id="category-list"></div>
+      <div style="font-size:11px;color:#8b98a3;margin-top:8px;">分类是独立字段，和「类型 / 标签」互不影响；顶部筛选项点一次选中、再点一次取消。</div>
 
-    <div class="section-title">阅读时长格式</div>
-    <div class="field">
-      <label>卡片上如何显示阅读时长</label>
-      <select id="set-duration-format">
-        <option value="cn">1小时1分</option>
-        <option value="cn-pad">1小时01分</option>
-        <option value="cn-min">1小时1分钟</option>
-        <option value="en">1h1m</option>
-        <option value="en-pad">1h01m</option>
-        <option value="hours">1.5小时</option>
-        <option value="minutes">90分钟</option>
-      </select>
-    </div>
+      <div class="section-title">主题与封面</div>
+      <div class="new-theme-row">
+        <input id="new-theme-name" type="text" placeholder="新建主题名称，例如：春日书单" autocomplete="off">
+        <button id="btn-new-theme">新建</button>
+      </div>
+      <div id="theme-list"></div>
+      <div class="cover-settings-row" style="margin-top:12px;">
+        <div class="mini-field">
+          <label>封面宽度（px）</label>
+          <input id="set-cover-width" type="number" min="30" max="200" step="1" value="64">
+        </div>
+        <div class="mini-field">
+          <label>封面与文字间距（px）</label>
+          <input id="set-cover-gap" type="number" min="0" max="80" step="1" value="14">
+        </div>
+        <div class="mini-field">
+          <label>封面圆角（px）</label>
+          <input id="set-cover-radius" type="number" min="0" max="30" step="1" value="0">
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8b98a3;margin-top:6px;">封面透明、无阴影、垂直居中；同一主题的书按顺序轮流使用封面</div>
+      <input type="file" id="theme-cover-input" accept="image/*" multiple style="display:none">
 
-    <div class="section-title">批量导入</div>
-    <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
-    <div class="io-row">
-      <button id="btn-import-text" class="primary">解析并导入</button>
-      <button id="btn-export">导出备份</button>
-      <button id="btn-import-file">导入文件</button>
-      <button id="btn-clear-all" class="danger">清空全部</button>
+      <div class="section-title">配色主题</div>
+      <div class="color-theme-row" id="color-theme-row">
+        <button class="color-swatch" data-color-theme="forest" title="森绿"><span class="dot" style="background:#2f6b5e"></span>森绿</button>
+        <button class="color-swatch" data-color-theme="mist" title="雾蓝"><span class="dot" style="background:#4a7fa5"></span>雾蓝</button>
+        <button class="color-swatch" data-color-theme="caramel" title="焦糖"><span class="dot" style="background:#a06b4a"></span>焦糖</button>
+        <button class="color-swatch" data-color-theme="sakura" title="樱粉"><span class="dot" style="background:#b06a7b"></span>樱粉</button>
+        <button class="color-swatch" data-color-theme="night" title="夜间"><span class="dot" style="background:#5ea88d"></span>夜间</button>
+      </div>
+
+      <div class="section-title">阅读时长格式</div>
+      <div class="field">
+        <label>卡片上如何显示阅读时长</label>
+        <select id="set-duration-format">
+          <option value="cn">1小时1分</option>
+          <option value="cn-pad">1小时01分</option>
+          <option value="cn-min">1小时1分钟</option>
+          <option value="en">1h1m</option>
+          <option value="en-pad">1h01m</option>
+          <option value="hours">1.5小时</option>
+          <option value="minutes">90分钟</option>
+        </select>
+      </div>
+
+      <div class="section-title">批量导入</div>
+      <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
+      <div class="io-row">
+        <button id="btn-import-text" class="primary">解析并导入</button>
+        <button id="btn-export">导出备份</button>
+        <button id="btn-import-file">导入文件</button>
+        <button id="btn-clear-all" class="danger">清空全部</button>
+      </div>
+      <div class="io-result" id="io-result"></div>
+      <input type="file" id="file-input" accept=".json,application/json" style="display:none">
     </div>
-    <div class="io-result" id="io-result"></div>
-    <input type="file" id="file-input" accept=".json,application/json" style="display:none">
   </div>
 </div>
 
@@ -993,7 +1047,6 @@
   let editingId = null;
   let formCategory = '';
 
-  // 多选模式
   let multiSelectMode = false;
   let multiPanel = 'main';
   const selectedIds = new Set();
@@ -1001,7 +1054,6 @@
   const STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7L5.8 21l1.6-7L2 9.3l7.1-.7Z"/></svg>';
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
 
-  // ---------- 主题 ----------
   function loadThemes() {
     try {
       themes = JSON.parse(localStorage.getItem(THEMES_KEY) || '[]');
@@ -1019,7 +1071,6 @@
     return themes.find(t => t.id === id);
   }
 
-  // ---------- 分类 ----------
   function loadCategories() {
     try {
       categories = JSON.parse(localStorage.getItem(CATEGORIES_KEY) || '[]');
@@ -1035,7 +1086,6 @@
   function splitTags(s) {
     return [...new Set(String(s || '').split(/[,，、/;；\n]+/).map(t => t.trim()).filter(Boolean))];
   }
-  // 老数据迁移：把以前混在「类型/标签」里的分类词，挪到独立的 category 字段
   function migrateLegacyCategories() {
     if (!categories.length) return;
     let changed = false;
@@ -1054,7 +1104,6 @@
     if (changed) save();
   }
 
-  // ---------- 设置 ----------
   const COLOR_THEMES = {
     forest: { bg:'#f5f6f8', card:'#ffffff', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },
     mist: { bg:'#f4f6f9', card:'#ffffff', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c07a3a', 'orange-soft':'#faf0e3', gold:'#c99a3b' },
@@ -1067,17 +1116,29 @@
     Object.keys(t).forEach(k => document.documentElement.style.setProperty('--' + k, t[k]));
     document.documentElement.style.setProperty('--green', t.green);
     document.documentElement.style.setProperty('--green-soft', t['green-soft']);
-    document.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', b.dataset.colorTheme === (themeId || 'forest')));
+    document.querySelectorAll('#color-theme-row .color-swatch').forEach(b => b.classList.toggle('active', b.dataset.colorTheme === (themeId || 'forest')));
     const mt = document.querySelector('meta[name="theme-color"]');
     if (mt) mt.setAttribute('content', t.accent);
   }
 
+  const FS_MIN = 0.7;
+  const FS_MAX = 2;
+
+  function clampFs(v) {
+    let n = Number(v);
+    if (!n || isNaN(n)) n = 1;
+    return Math.min(FS_MAX, Math.max(FS_MIN, Math.round(n * 100) / 100));
+  }
+
   function applyFontScale() {
-    const fs = Number(settings.fontScale) || 1;
+    const fs = clampFs(settings.fontScale);
+    settings.fontScale = fs;
     document.documentElement.style.setProperty('--fs', fs);
     document.querySelectorAll('#font-size-row .color-swatch').forEach(b => {
-      b.classList.toggle('active', Number(b.dataset.fontSize) === fs);
+      b.classList.toggle('active', Math.abs(Number(b.dataset.fontSize) - fs) < 0.001);
     });
+    const inp = document.getElementById('fs-custom-input');
+    if (inp && document.activeElement !== inp) inp.value = fs;
   }
 
   function loadSettings() {
@@ -1104,7 +1165,6 @@
     } catch (e) {}
   }
 
-  // ---------- 字体存储：用 IndexedDB（localStorage 太小，装不下字体） ----------
   const FONT_DB_NAME = 'novel_memo_fonts';
   const FONT_STORE = 'files';
   const FONT_ITEM_KEY = 'customFont';
@@ -1146,7 +1206,6 @@
     }));
   }
 
-  // ---------- 自定义字体 ----------
   let currentFontUrl = '';
 
   function fontFormat(name) {
@@ -1213,7 +1272,6 @@
     }).catch(() => {});
   }
 
-  // ---------- 数据 ----------
   function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -1237,7 +1295,6 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
-  // ---------- DOM ----------
   const $list = document.getElementById('list');
   const $search = document.getElementById('search-input');
   const $sort = document.getElementById('sort-select');
@@ -1273,7 +1330,6 @@
   let formStatus = 'reading';
   let formRating = 0;
 
-  // ---------- 筛选行 ----------
   const STATUS_TABS = [['wishlist', '想读'], ['reading', '在读'], ['finished', '读完'], ['dropped', '弃读']];
 
   function renderFilterRow() {
@@ -1292,7 +1348,6 @@
     $filterRow.innerHTML = parts.join('');
   }
 
-  // ---------- 编辑弹窗里的分类选择器（单选） ----------
   function renderCategoryChips() {
     if (!$categoryChips) return;
     if (categories.length === 0) {
@@ -1304,7 +1359,6 @@
     ).join('');
   }
 
-  // ---------- 多选模式 ----------
   function renderMultiBar() {
     if (!$multiBar) return;
     if (!multiSelectMode) {
@@ -1363,7 +1417,6 @@
     renderMultiBar();
   }
 
-  // ---------- 封面轮换分配 ----------
   function assignCovers(shownRecords) {
     const coverMap = {};
     const theme = getTheme(settings.activeThemeId);
@@ -1374,7 +1427,6 @@
     return coverMap;
   }
 
-  // ---------- 渲染 ----------
   const STATUS_META = {
     wishlist: { text: '想读', cls: 'badge-wishlist' },
     finished: { text: '读完', cls: 'badge-finished' },
@@ -1445,7 +1497,6 @@
       shown = shown.filter(r => r.category === currentCategory);
     }
     if (currentFilter === 'all') {
-      // 「全部」= 读过的书，不含想读
       shown = shown.filter(r => r.status !== 'wishlist');
     } else {
       shown = shown.filter(r => r.status === currentFilter);
@@ -1571,7 +1622,6 @@
     return `读完 ${d}${t ? ' ' + t : ''}`;
   }
 
-  // ---------- 主题管理渲染 ----------
   function renderThemes() {
     if (themes.length === 0) {
       $themeList.innerHTML = '<div style="font-size:12px;color:#8b98a3;">还没有主题，先在上方新建一个</div>';
@@ -1598,7 +1648,6 @@
     }).join('');
   }
 
-  // ---------- 分类管理渲染 ----------
   function renderCategories() {
     if (!$categoryList) return;
     if (categories.length === 0) {
@@ -1642,7 +1691,6 @@
     render();
   }
 
-  // ---------- 批量导入解析 ----------
   function parseImportText(text) {
     const lines = text.split(/\r?\n/);
     const results = [];
@@ -1739,7 +1787,6 @@
     $importArea.value = '';
   }
 
-  // ---------- 导出 / 导入备份 ----------
   function handleExport() {
     if (records.length === 0) {
       $ioResult.textContent = '当前没有记录可导出';
@@ -1815,7 +1862,6 @@
     $ioResult.style.color = '#8b98a3';
   }
 
-  // ---------- 表单 ----------
   function openEditSheet(record) {
     editingId = record ? record.id : null;
     $sheetTitle.textContent = record ? '编辑记录' : '添加记录';
@@ -1928,8 +1974,6 @@
     }
   }
 
-  // ---------- 事件 ----------
-
   $fab.addEventListener('click', () => openEditSheet(null));
 
   document.getElementById('menu-btn').addEventListener('click', () => {
@@ -1939,13 +1983,33 @@
     $overlayIo.classList.add('show');
   });
 
-  // 字号
+  document.getElementById('btn-io-close').addEventListener('click', () => {
+    $overlayIo.classList.remove('show');
+  });
+
   document.getElementById('font-size-row').addEventListener('click', (e) => {
     const btn = e.target.closest('.color-swatch');
     if (!btn) return;
     const v = Number(btn.dataset.fontSize);
     if (!v) return;
-    settings.fontScale = v;
+    settings.fontScale = clampFs(v);
+    saveSettings();
+    applyFontScale();
+  });
+
+  const $fsInput = document.getElementById('fs-custom-input');
+  $fsInput.addEventListener('input', () => {
+    const v = parseFloat($fsInput.value);
+    if (isNaN(v)) return;
+    settings.fontScale = clampFs(v);
+    document.documentElement.style.setProperty('--fs', settings.fontScale);
+    document.querySelectorAll('#font-size-row .color-swatch').forEach(b => {
+      b.classList.toggle('active', Math.abs(Number(b.dataset.fontSize) - settings.fontScale) < 0.001);
+    });
+    saveSettings();
+  });
+  $fsInput.addEventListener('blur', () => {
+    settings.fontScale = clampFs($fsInput.value);
     saveSettings();
     applyFontScale();
   });
@@ -1969,7 +2033,6 @@
     e.target.value = '';
   });
 
-  // 字体
   document.getElementById('btn-font-upload').addEventListener('click', () => $fontFileInput.click());
   $fontFileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -1982,7 +2045,6 @@
     idbDelete(FONT_ITEM_KEY).catch(() => {});
   });
 
-  // 分类管理
   document.getElementById('btn-new-category').addEventListener('click', () => {
     const name = $newCategoryName.value.trim();
     if (!name) { alert('请输入分类名称'); return; }
@@ -2014,7 +2076,6 @@
     render();
   });
 
-  // 编辑弹窗的分类选择（单选）
   if ($categoryChips) {
     $categoryChips.addEventListener('click', (e) => {
       const btn = e.target.closest('.cchip');
@@ -2025,7 +2086,6 @@
     });
   }
 
-  // 多选操作栏
   if ($multiBar) {
     $multiBar.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
@@ -2069,7 +2129,6 @@
     });
   }
 
-  // 长按进入多选
   let pressTimer = null;
   let longPressFired = false;
   let lastTouchAt = 0;
@@ -2091,7 +2150,6 @@
   $list.addEventListener('touchmove', () => { clearTimeout(pressTimer); }, { passive: true });
   $list.addEventListener('touchcancel', () => { clearTimeout(pressTimer); }, { passive: true });
 
-  // 桌面端长按
   $list.addEventListener('mousedown', (e) => {
     if (Date.now() - lastTouchAt < 1200) return;
     if (multiSelectMode) return;
@@ -2108,7 +2166,6 @@
   $list.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
   $list.addEventListener('mouseleave', () => { clearTimeout(pressTimer); });
 
-  // 主题
   document.getElementById('btn-new-theme').addEventListener('click', () => {
     const name = $newThemeName.value.trim();
     if (!name) { alert('请输入主题名称'); return; }
@@ -2151,7 +2208,6 @@
     addingCoversForThemeId = null;
   });
 
-  // 封面设置
   document.getElementById('set-cover-width').addEventListener('input', (e) => {
     const v = parseInt(e.target.value, 10);
     if (v >= 30 && v <= 200) {
@@ -2268,7 +2324,6 @@
     }
   });
 
-  // ---------- 字体延迟加载（14MB，等首屏渲染完再下） ----------
   function injectAppFont() {
     try {
       if (document.getElementById('app-font-style')) return;
@@ -2279,7 +2334,6 @@
     } catch (e) {}
   }
 
-  // ---------- Service Worker 注册（离线可用 + 缓存） ----------
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
@@ -2288,7 +2342,6 @@
     } catch (e) {}
   }
 
-  // ---------- 启动 ----------
   loadSettings();
   loadCustomFontFromStorage().catch(() => {});
   loadThemes();
