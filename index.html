@@ -116,24 +116,59 @@
   }
   .search-box input::placeholder { color: var(--text-dim); }
   .search-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,107,94,.08); }
-  .sort-box select {
+
+  /* 排序按钮 + 自定义菜单（替掉原生 select，样式可控） */
+  .sort-box { position: relative; flex-shrink: 0; }
+  #sort-btn {
     height: 44px;
     width: 44px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--line);
     background: var(--card);
-    color: transparent;
-    padding: 0;
-    font-size: 12px;
-    outline: none;
+    color: var(--text-sub);
     cursor: pointer;
     box-shadow: var(--shadow-card);
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 24 24' fill='none' stroke='%23384a54' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='8' y1='6' x2='20' y2='6'/%3E%3Cline x1='4' y1='12' x2='20' y2='12'/%3E%3Cline x1='10' y1='18' x2='20' y2='18'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s, border-color .15s, color .15s;
   }
-  .sort-box select option { color: var(--text); }
+  #sort-btn:active { background: #f0f2f5; }
+  #sort-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .sort-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 190px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 12px 34px rgba(30,40,50,.18);
+    padding: 6px;
+    display: none;
+    z-index: 40;
+    max-height: 62vh;
+    overflow-y: auto;
+  }
+  .sort-menu.show { display: block; }
+  .sort-menu::-webkit-scrollbar { display: none; }
+  .sort-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    height: 40px;
+    padding: 0 12px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    border-radius: 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .12s;
+  }
+  .sort-menu button:active { background: #f3f5f7; }
+  .sort-menu button.active { color: var(--accent); font-weight: 600; background: var(--accent-soft); }
 
 
   .filter-row {
@@ -399,38 +434,42 @@
 
   /* ---------- 设置面板：居中悬浮卡片 ---------- */
   #overlay-io { align-items: center; justify-content: center; padding: 18px; }
+  /* 让整个卡片（含右上角 ×）一起做同一个入场动画，避免 × 先冒出来 */
   .modal-wrap {
     position: relative;
     width: min(100%, 520px);
     max-height: 86vh;
     display: flex;
+    transform: translateY(16px) scale(.97);
+    transition: transform .28s cubic-bezier(.32,.72,.28,1);
   }
+  #overlay-io.show .modal-wrap { transform: translateY(0) scale(1); }
   #overlay-io .sheet {
     width: 100%;
     max-height: 86vh;
     border-radius: 22px;
     padding: 24px 22px 26px;
-    transform: translateY(16px) scale(.97);
+    transform: none;
     box-shadow: 0 18px 60px rgba(30,40,50,.24);
   }
-  #overlay-io.show .sheet { transform: translateY(0) scale(1); }
+  #overlay-io.show .sheet { transform: none; }
   #overlay-io .sheet-grip { display: none; }
   .sheet-close {
     position: absolute;
-    top: 12px; right: 12px;
-    width: 32px; height: 32px;
+    top: 14px; right: 14px;
+    width: 30px; height: 30px;
     border-radius: 50%;
     border: none;
-    background: #f0f2f5;
-    color: var(--text-sub);
+    background: rgba(0,0,0,.05);
+    color: var(--text-dim);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 6;
-    transition: background .15s;
+    transition: background .15s, color .15s;
   }
-  .sheet-close:active { background: #e2e6ea; }
+  .sheet-close:active { background: rgba(0,0,0,.11); color: var(--text-sub); }
 
   /* 字号自定义输入 */
   .fs-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
@@ -749,7 +788,6 @@
   .io-row button:active { background: #f3f5f7; }
   .io-row button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .io-row button.danger { background: var(--red-soft); border-color: #debdbd; color: var(--red); }
-  .io-row button:disabled { opacity: .55; cursor: default; }
   .io-result { margin-top: 12px; font-size: 13px; line-height: 1.7; color: var(--green); white-space: pre-wrap; word-break: break-all; }
 
   #backup-text {
@@ -835,13 +873,14 @@
       <input id="search-input" type="text" placeholder="搜索书名、作者或标签" autocomplete="off">
     </div>
     <div class="sort-box">
-      <select id="sort-select">
-        <option value="recent">阅读时间 · 新→旧</option>
-        <option value="title">书名 · A→Z</option>
-        <option value="hours">阅读时长 · 长→短</option>
-        <option value="rating">评分 · 高→低</option>
-        <option value="words">字数 · 多→少</option>
-      </select>
+      <button id="sort-btn" title="排序">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6" x2="20" y2="6"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="10" y1="18" x2="20" y2="18"/>
+        </svg>
+      </button>
+      <div class="sort-menu" id="sort-menu"></div>
     </div>
   </div>
 
@@ -952,7 +991,7 @@
 <div class="overlay" id="overlay-io">
   <div class="modal-wrap">
     <button class="sheet-close" id="btn-io-close" title="关闭">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
     </button>
     <div class="sheet">
       <h2>设置与数据</h2>
@@ -1393,7 +1432,6 @@
 
   const $list = document.getElementById('list');
   const $search = document.getElementById('search-input');
-  const $sort = document.getElementById('sort-select');
   const $fab = document.getElementById('fab');
   const $filterRow = document.getElementById('filter-row');
   const $overlayEdit = document.getElementById('overlay-edit');
@@ -1411,6 +1449,8 @@
   const $categoryChips = document.getElementById('category-chips');
   const $multiBar = document.getElementById('multi-bar');
   const $app = document.getElementById('app');
+  const $sortBtn = document.getElementById('sort-btn');
+  const $sortMenu = document.getElementById('sort-menu');
 
   const fTitle = document.getElementById('f-title');
   const fAuthor = document.getElementById('f-author');
@@ -1427,6 +1467,26 @@
   let formRating = 0;
 
   const STATUS_TABS = [['wishlist', '想读'], ['reading', '在读'], ['finished', '读完'], ['dropped', '弃读']];
+
+  const SORT_OPTIONS = [
+    ['recent', '阅读时间 · 新→旧'],
+    ['title', '书名 · A→Z'],
+    ['hours', '阅读时长 · 长→短'],
+    ['rating', '评分 · 高→低'],
+    ['words', '字数 · 多→少']
+  ];
+
+  function renderSortMenu() {
+    if (!$sortMenu) return;
+    $sortMenu.innerHTML = SORT_OPTIONS.map(([v, l]) =>
+      '<button type="button" data-sort="' + v + '" class="' + (sortMode === v ? 'active' : '') + '">' + l + '</button>'
+    ).join('');
+  }
+
+  function closeSortMenu() {
+    if ($sortMenu) $sortMenu.classList.remove('show');
+    if ($sortBtn) $sortBtn.classList.remove('active');
+  }
 
   function renderFilterRow() {
     if (!$filterRow) return;
@@ -1946,7 +2006,6 @@
     });
   }
 
-  // ---------- GitHub Gist 云端备份 ----------
   const GIST_FILENAME = 'novel-memo-backup.json';
   const GIST_DESC = '小说备忘录备份（novel-memo）';
 
@@ -1997,7 +2056,6 @@
     const token = (settings.gistToken || '').trim();
     if (!token) { setGistResult('请先填入 GitHub Token', false); return; }
     if (records.length === 0) { setGistResult('当前没有记录可备份', false); return; }
-    if (records.length === 0) return;
 
     const content = JSON.stringify(records, null, 2);
     setGistResult('正在上传…', null);
@@ -2254,6 +2312,7 @@
     $ioResult.textContent = '';
     setGistResult('', null);
     hideBackupText();
+    closeSortMenu();
     renderThemes();
     renderCategories();
     updateGistHint();
@@ -2271,6 +2330,30 @@
   const $gistId = document.getElementById('gist-id');
   if ($gistToken) $gistToken.addEventListener('change', gistSaveSettings);
   if ($gistId) $gistId.addEventListener('change', gistSaveSettings);
+
+  // 排序：自定义菜单
+  if ($sortBtn) {
+    $sortBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willShow = !$sortMenu.classList.contains('show');
+      renderSortMenu();
+      if (willShow) {
+        $sortMenu.classList.add('show');
+        $sortBtn.classList.add('active');
+      } else {
+        closeSortMenu();
+      }
+    });
+  }
+  if ($sortMenu) {
+    $sortMenu.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-sort]');
+      if (!btn) return;
+      sortMode = btn.dataset.sort;
+      closeSortMenu();
+      render();
+    });
+  }
 
   document.getElementById('font-size-row').addEventListener('click', (e) => {
     const btn = e.target.closest('.color-swatch');
@@ -2560,11 +2643,6 @@
     render();
   });
 
-  $sort.addEventListener('change', () => {
-    sortMode = $sort.value;
-    render();
-  });
-
   $filterRow.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -2610,6 +2688,13 @@
     }
   });
 
+  // 点空白处收起排序菜单
+  document.addEventListener('click', (e) => {
+    if ($sortMenu && $sortMenu.classList.contains('show')) {
+      if (!e.target.closest('.sort-box')) closeSortMenu();
+    }
+  });
+
   function injectAppFont() {
     try {
       if (document.getElementById('app-font-style')) return;
@@ -2635,6 +2720,7 @@
   load();
   migrateLegacyCategories();
   renderFilterRow();
+  renderSortMenu();
   render();
 
   if (document.readyState === 'complete') {
