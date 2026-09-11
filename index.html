@@ -13,7 +13,6 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-  @font-face { font-family: 'AppFont'; src: url('font.ttf') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }
   :root {
     --app-font: 'AppFont', -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Segoe UI", sans-serif;
     --bg: #f5f6f8;
@@ -1948,6 +1947,26 @@
     }
   });
 
+  // ---------- 字体延迟加载（14MB，等首屏渲染完再下） ----------
+  function injectAppFont() {
+    try {
+      if (document.getElementById('app-font-style')) return;
+      const styleEl = document.createElement('style');
+      styleEl.id = 'app-font-style';
+      styleEl.textContent = "@font-face { font-family: 'AppFont'; src: url('font.ttf') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }";
+      document.head.appendChild(styleEl);
+    } catch (e) {}
+  }
+
+  // ---------- Service Worker 注册（离线可用 + 缓存） ----------
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+    try {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    } catch (e) {}
+  }
+
   // ---------- 启动 ----------
   loadSettings();
   loadCustomFontFromStorage();
@@ -1957,6 +1976,13 @@
   migrateLegacyCategories();
   renderFilterRow();
   render();
+
+  if (document.readyState === 'complete') {
+    injectAppFont();
+  } else {
+    window.addEventListener('load', injectAppFont);
+  }
+  registerServiceWorker();
 })();
 </script>
 </body>
