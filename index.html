@@ -33,6 +33,7 @@
     --orange: #c97a35;
     --orange-soft: #fbeee1;
     --gold: #c99a3b;
+    --fs: 1;
     --radius: 18px;
     --radius-sm: 12px;
     --shadow-card: 0 1px 2px rgba(35,45,55,.03), 0 6px 24px rgba(35,45,55,.05);
@@ -74,13 +75,13 @@
     justify-content: space-between;
     flex-shrink: 0;
   }
-  .brand h1 { font-size: 24px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brand h1 { font-size: calc(24px * var(--fs)); font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
   .brand .sub { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-top: 3px; text-transform: uppercase; }
   .header-right { display: flex; align-items: center; gap: 14px; }
   .stats { display: flex; gap: 14px; }
   .stats .stat { text-align: right; }
-  .stats .num { font-size: 17px; font-weight: 700; line-height: 1.2; }
-  .stats .lbl { font-size: 10px; color: var(--text-dim); letter-spacing: .5px; }
+  .stats .num { font-size: calc(17px * var(--fs)); font-weight: 700; line-height: 1.2; }
+  .stats .lbl { font-size: calc(10px * var(--fs)); color: var(--text-dim); letter-spacing: .5px; }
   .stats .st-done .num { color: var(--green); }
   .stats .st-reading .num { color: var(--blue); }
   .stats .st-dropped .num { color: var(--orange); }
@@ -110,7 +111,7 @@
     background: var(--card);
     color: var(--text);
     padding: 0 14px 0 40px;
-    font-size: 14px;
+    font-size: calc(14px * var(--fs));
     outline: none;
     box-shadow: var(--shadow-card);
     transition: border-color .15s, box-shadow .15s;
@@ -155,7 +156,7 @@
     border: 1px solid var(--line);
     background: transparent;
     color: var(--text-dim);
-    font-size: 12px;
+    font-size: calc(12px * var(--fs));
     cursor: pointer;
     transition: all .15s;
     white-space: nowrap;
@@ -168,7 +169,7 @@
   #list::-webkit-scrollbar { display: none; }
 
   .card-time {
-    font-size: 12px;
+    font-size: calc(12px * var(--fs));
     color: var(--text-dim);
     margin: 0 0 6px 4px;
     letter-spacing: .3px;
@@ -204,15 +205,15 @@
 
   .card-head { display: flex; align-items: flex-start; gap: 0; }
   .card-info { flex: 1; min-width: 0; }
-  .card-title { font-size: 17px; font-weight: 650; line-height: 1.4; word-break: break-all; letter-spacing: .2px; }
-  .card-author { font-size: 12.5px; color: var(--text-sub); margin-top: 4px; }
+  .card-title { font-size: calc(17px * var(--fs)); font-weight: 650; line-height: 1.4; word-break: break-all; letter-spacing: .2px; }
+  .card-author { font-size: calc(12.5px * var(--fs)); color: var(--text-sub); margin-top: 4px; }
   .card-genres { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
   .card-genre {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    font-size: 11px;
+    font-size: calc(11px * var(--fs));
     color: var(--accent);
     background: var(--accent-soft);
     border-radius: 999px;
@@ -226,7 +227,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--fs));
     font-weight: 600;
     border-radius: 999px;
     padding: 5px 12px;
@@ -250,7 +251,7 @@
     border: 1.5px solid currentColor;
   }
 
-  .meta-line { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11.5px; color: var(--text-dim); }
+  .meta-line { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: calc(11.5px * var(--fs)); color: var(--text-dim); }
   .meta-line .meta-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
   .meta-line .meta-item svg { color: var(--text-dim); }
   .meta-line .dur { color: var(--accent); font-weight: 600; }
@@ -261,7 +262,7 @@
 
   .card-notes {
     margin-top: 12px;
-    font-size: 13px;
+    font-size: calc(13px * var(--fs));
     line-height: 1.7;
     color: #4c5a64;
     background: #f8fafb;
@@ -288,7 +289,7 @@
     justify-content: center;
     color: var(--text-dim);
   }
-  .empty p { font-size: 14px; line-height: 1.8; }
+  .empty p { font-size: calc(14px * var(--fs)); line-height: 1.8; }
 
   #fab {
     position: absolute;
@@ -308,6 +309,65 @@
     justify-content: center;
   }
   #fab:active { transform: scale(.92); background: var(--accent-strong); }
+
+  /* ---------- 多选模式 ---------- */
+  .multi-on .card { cursor: pointer; }
+  .multi-on .card::before {
+    content: '';
+    position: absolute;
+    left: 10px; top: 10px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid #cfd6dc;
+    background: #fff;
+    z-index: 3;
+    box-sizing: border-box;
+  }
+  .multi-on .card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .multi-on .card.selected::before {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .multi-on .card.selected::after {
+    content: '';
+    position: absolute;
+    left: 15px; top: 17px;
+    width: 8px; height: 4px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+    z-index: 4;
+  }
+  .multi-on #fab { display: none !important; }
+  .multi-bar {
+    position: absolute;
+    left: 12px; right: 12px;
+    bottom: calc(14px + var(--safe-bottom));
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 10px 34px rgba(30,40,50,.20);
+    padding: 10px 12px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 30;
+  }
+  .multi-bar.show { display: flex; }
+  .multi-bar .mb-count { font-size: 12.5px; color: var(--text-sub); font-weight: 600; padding-left: 4px; }
+  .multi-bar .mb-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .multi-bar .mb-btns button {
+    height: 32px; padding: 0 13px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fafbfc;
+    color: var(--text-sub);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .multi-bar .mb-btns button:active { background: #eef1f4; }
+  .multi-bar .mb-btns button.danger { color: var(--red); border-color: #debdbd; background: var(--red-soft); }
 
   /* 弹窗 */
   .overlay {
@@ -725,6 +785,8 @@
 
   <div id="list"></div>
 
+  <div class="multi-bar" id="multi-bar"></div>
+
   <button id="fab" title="添加记录">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -828,6 +890,14 @@
     <div class="sheet-grip"></div>
     <h2>设置与数据</h2>
 
+    <div class="section-title">字号</div>
+    <div class="color-theme-row" id="font-size-row">
+      <button class="color-swatch" data-font-size="0.92">小</button>
+      <button class="color-swatch" data-font-size="1">标准</button>
+      <button class="color-swatch" data-font-size="1.1">大</button>
+      <button class="color-swatch" data-font-size="1.22">特大</button>
+    </div>
+
     <div class="section-title">自定义字体</div>
     <div class="font-upload-row">
       <button id="btn-font-upload">选择字体文件</button>
@@ -915,13 +985,18 @@
   let records = [];
   let themes = [];
   let categories = [];
-  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest' };
+  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest', fontScale: 1 };
   let currentFilter = 'all';
   let currentCategory = '';
   let searchQuery = '';
   let sortMode = 'recent';
   let editingId = null;
   let formCategory = '';
+
+  // 多选模式
+  let multiSelectMode = false;
+  let multiPanel = 'main';
+  const selectedIds = new Set();
 
   const STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7L5.8 21l1.6-7L2 9.3l7.1-.7Z"/></svg>';
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
@@ -997,11 +1072,19 @@
     if (mt) mt.setAttribute('content', t.accent);
   }
 
+  function applyFontScale() {
+    const fs = Number(settings.fontScale) || 1;
+    document.documentElement.style.setProperty('--fs', fs);
+    document.querySelectorAll('#font-size-row .color-swatch').forEach(b => {
+      b.classList.toggle('active', Number(b.dataset.fontSize) === fs);
+    });
+  }
+
   function loadSettings() {
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
       if (s && typeof s === 'object') {
-        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest' }, s);
+        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest', fontScale: 1 }, s);
       }
     } catch (e) {}
     document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
@@ -1013,6 +1096,7 @@
     const durSel = document.getElementById('set-duration-format');
     if (durSel) durSel.value = settings.durationFormat;
     applyColorTheme(settings.colorTheme);
+    applyFontScale();
   }
   function saveSettings() {
     try {
@@ -1172,6 +1256,8 @@
   const $categoryList = document.getElementById('category-list');
   const $newCategoryName = document.getElementById('new-category-name');
   const $categoryChips = document.getElementById('category-chips');
+  const $multiBar = document.getElementById('multi-bar');
+  const $app = document.getElementById('app');
 
   const fTitle = document.getElementById('f-title');
   const fAuthor = document.getElementById('f-author');
@@ -1216,6 +1302,65 @@
     $categoryChips.innerHTML = categories.map(c =>
       '<button type="button" class="cchip' + (formCategory === c ? ' on' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>'
     ).join('');
+  }
+
+  // ---------- 多选模式 ----------
+  function renderMultiBar() {
+    if (!$multiBar) return;
+    if (!multiSelectMode) {
+      $multiBar.classList.remove('show');
+      $multiBar.innerHTML = '';
+      return;
+    }
+    $multiBar.classList.add('show');
+    let html = '';
+    if (multiPanel === 'status') {
+      html += '<span class="mb-count">改成…</span><div class="mb-btns">';
+      STATUS_TABS.forEach(([v, l]) => {
+        html += '<button data-ms="setstatus" data-val="' + v + '">' + l + '</button>';
+      });
+      html += '<button data-ms="back">返回</button></div>';
+    } else if (multiPanel === 'category') {
+      html += '<span class="mb-count">归到…</span><div class="mb-btns">';
+      html += '<button data-ms="setcat" data-idx="-1">无分类</button>';
+      categories.forEach((c, i) => {
+        html += '<button data-ms="setcat" data-idx="' + i + '">' + esc(c) + '</button>';
+      });
+      html += '<button data-ms="back">返回</button></div>';
+    } else {
+      html += '<span class="mb-count">已选 ' + selectedIds.size + ' 本</span><div class="mb-btns">';
+      html += '<button data-ms="status">改状态</button>';
+      html += '<button data-ms="category">改分类</button>';
+      html += '<button data-ms="delete" class="danger">删除</button>';
+      html += '<button data-ms="cancel">取消</button></div>';
+    }
+    $multiBar.innerHTML = html;
+  }
+
+  function updateMultiSelectUI() {
+    document.querySelectorAll('#list .card').forEach(card => {
+      card.classList.toggle('selected', selectedIds.has(card.dataset.id));
+    });
+    renderMultiBar();
+  }
+
+  function enterMultiSelect(id) {
+    if (multiSelectMode) return;
+    multiSelectMode = true;
+    multiPanel = 'main';
+    selectedIds.clear();
+    if (id) selectedIds.add(id);
+    $app.classList.add('multi-on');
+    updateMultiSelectUI();
+  }
+
+  function exitMultiSelect() {
+    multiSelectMode = false;
+    multiPanel = 'main';
+    selectedIds.clear();
+    $app.classList.remove('multi-on');
+    document.querySelectorAll('#list .card').forEach(c => c.classList.remove('selected'));
+    renderMultiBar();
   }
 
   // ---------- 封面轮换分配 ----------
@@ -1346,6 +1491,7 @@
           </div>
           <p>${emptyMsg}</p>
         </div>`;
+      if (multiSelectMode) exitMultiSelect();
       return;
     }
 
@@ -1402,6 +1548,8 @@
           </div>
         </div>`;
     }).join('');
+
+    if (multiSelectMode) updateMultiSelectUI();
   }
 
   function esc(s) {
@@ -1791,6 +1939,17 @@
     $overlayIo.classList.add('show');
   });
 
+  // 字号
+  document.getElementById('font-size-row').addEventListener('click', (e) => {
+    const btn = e.target.closest('.color-swatch');
+    if (!btn) return;
+    const v = Number(btn.dataset.fontSize);
+    if (!v) return;
+    settings.fontScale = v;
+    saveSettings();
+    applyFontScale();
+  });
+
   document.getElementById('f-start').addEventListener('blur', (e) => { e.target.value = normalizeDateInput(e.target.value); });
   document.getElementById('f-end').addEventListener('blur', (e) => { e.target.value = normalizeDateInput(e.target.value); });
   document.getElementById('btn-back').addEventListener('click', closeEditSheet);
@@ -1865,6 +2024,89 @@
       renderCategoryChips();
     });
   }
+
+  // 多选操作栏
+  if ($multiBar) {
+    $multiBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const act = btn.dataset.ms;
+      if (!act) return;
+      if (act === 'cancel') { exitMultiSelect(); return; }
+      if (act === 'back') { multiPanel = 'main'; renderMultiBar(); return; }
+      if (act === 'status') { multiPanel = 'status'; renderMultiBar(); return; }
+      if (act === 'category') { multiPanel = 'category'; renderMultiBar(); return; }
+      if (act === 'delete') {
+        if (!selectedIds.size) return;
+        if (!confirm('确定删除选中的 ' + selectedIds.size + ' 本吗？此操作不可撤销。')) return;
+        records = records.filter(r => !selectedIds.has(r.id));
+        save();
+        exitMultiSelect();
+        render();
+        return;
+      }
+      if (act === 'setstatus') {
+        const v = btn.dataset.val;
+        records.forEach(r => {
+          if (selectedIds.has(r.id)) { r.status = v; r.updatedAt = new Date().toISOString(); }
+        });
+        save();
+        exitMultiSelect();
+        render();
+        return;
+      }
+      if (act === 'setcat') {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const v = (isNaN(idx) || idx < 0) ? '' : (categories[idx] || '');
+        records.forEach(r => {
+          if (selectedIds.has(r.id)) { r.category = v; r.updatedAt = new Date().toISOString(); }
+        });
+        save();
+        exitMultiSelect();
+        render();
+        return;
+      }
+    });
+  }
+
+  // 长按进入多选
+  let pressTimer = null;
+  let longPressFired = false;
+  let lastTouchAt = 0;
+
+  $list.addEventListener('touchstart', (e) => {
+    lastTouchAt = Date.now();
+    if (multiSelectMode) return;
+    const card = e.target.closest('.card');
+    if (!card) return;
+    longPressFired = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      longPressFired = true;
+      enterMultiSelect(card.dataset.id);
+      try { if (navigator.vibrate) navigator.vibrate(12); } catch (err) {}
+    }, 480);
+  }, { passive: true });
+  $list.addEventListener('touchend', () => { clearTimeout(pressTimer); }, { passive: true });
+  $list.addEventListener('touchmove', () => { clearTimeout(pressTimer); }, { passive: true });
+  $list.addEventListener('touchcancel', () => { clearTimeout(pressTimer); }, { passive: true });
+
+  // 桌面端长按
+  $list.addEventListener('mousedown', (e) => {
+    if (Date.now() - lastTouchAt < 1200) return;
+    if (multiSelectMode) return;
+    if (e.button !== 0) return;
+    const card = e.target.closest('.card');
+    if (!card) return;
+    longPressFired = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      longPressFired = true;
+      enterMultiSelect(card.dataset.id);
+    }, 480);
+  });
+  $list.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
+  $list.addEventListener('mouseleave', () => { clearTimeout(pressTimer); });
 
   // 主题
   document.getElementById('btn-new-theme').addEventListener('click', () => {
@@ -2008,6 +2250,13 @@
     const card = e.target.closest('.card');
     if (!card) return;
     const id = card.dataset.id;
+    if (multiSelectMode) {
+      if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+      if (selectedIds.size === 0) { exitMultiSelect(); return; }
+      updateMultiSelectUI();
+      return;
+    }
+    if (longPressFired) { longPressFired = false; return; }
     const rec = records.find(r => r.id === id);
     if (rec) openEditSheet(rec);
   });
