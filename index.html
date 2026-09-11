@@ -399,6 +399,33 @@
   .field .hint { font-size: 11px; color: var(--text-dim); margin-top: 5px; }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+  /* 编辑弹窗里的分类快捷选择 */
+  .genre-chip-field { margin-top: -8px; }
+  .genre-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .genre-chips .gchip {
+    height: 30px;
+    padding: 0 13px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fafbfc;
+    color: var(--text-sub);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .genre-chips .gchip:active { transform: scale(.96); }
+  .genre-chips .gchip.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .genre-chips .gempty { font-size: 12px; color: var(--text-dim); line-height: 30px; }
+
   .rating-picker { display: flex; gap: 4px; }
   .rating-picker button {
     background: none;
@@ -744,6 +771,9 @@
         <input id="f-genre" type="text" placeholder="科幻、悬疑" autocomplete="off">
       </div>
     </div>
+    <div class="field genre-chip-field">
+      <div class="genre-chips" id="genre-chips"></div>
+    </div>
     <div class="field">
       <label>阅读状态</label>
       <div class="status-picker" id="status-picker">
@@ -1080,6 +1110,7 @@
   const $newThemeName = document.getElementById('new-theme-name');
   const $categoryList = document.getElementById('category-list');
   const $newCategoryName = document.getElementById('new-category-name');
+  const $genreChips = document.getElementById('genre-chips');
 
   const fTitle = document.getElementById('f-title');
   const fAuthor = document.getElementById('f-author');
@@ -1112,6 +1143,25 @@
       parts.push('<button data-kind="status" data-value="' + val + '" class="' + (on ? 'active' : '') + '">' + label + '</button>');
     });
     $filterRow.innerHTML = parts.join('');
+  }
+
+  // ---------- 编辑弹窗里的分类快捷按钮 ----------
+  function getGenreTags() {
+    return splitTags(fGenre.value);
+  }
+  function setGenreTags(tags) {
+    fGenre.value = [...new Set(tags)].join('、');
+  }
+  function renderGenreChips() {
+    if (!$genreChips) return;
+    if (categories.length === 0) {
+      $genreChips.innerHTML = '<span class="gempty">还没有分类，去「设置 → 分类标签」新建</span>';
+      return;
+    }
+    const cur = getGenreTags();
+    $genreChips.innerHTML = categories.map(c =>
+      '<button type="button" class="gchip' + (cur.includes(c) ? ' on' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>'
+    ).join('');
   }
 
   // ---------- 封面轮换分配 ----------
@@ -1570,6 +1620,7 @@
     formRating = record ? (record.rating || 0) : 0;
     updateStatusPicker();
     updateRatingPicker();
+    renderGenreChips();
     const btnDel = document.getElementById('btn-delete');
     if (btnDel) btnDel.style.display = record ? '' : 'none';
     $overlayEdit.classList.add('show');
@@ -1708,6 +1759,7 @@
     saveCategories();
     renderCategories();
     renderFilterRow();
+    renderGenreChips();
     render();
     $newCategoryName.value = '';
   });
@@ -1724,8 +1776,24 @@
     saveCategories();
     renderCategories();
     renderFilterRow();
+    renderGenreChips();
     render();
   });
+
+  // 编辑弹窗里的分类快捷按钮
+  if ($genreChips) {
+    $genreChips.addEventListener('click', (e) => {
+      const btn = e.target.closest('.gchip');
+      if (!btn) return;
+      const name = btn.dataset.cat;
+      const tags = getGenreTags();
+      const i = tags.indexOf(name);
+      if (i >= 0) tags.splice(i, 1); else tags.push(name);
+      setGenreTags(tags);
+      renderGenreChips();
+    });
+  }
+  fGenre.addEventListener('input', renderGenreChips);
 
   // 主题
   document.getElementById('btn-new-theme').addEventListener('click', () => {
