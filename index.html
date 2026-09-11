@@ -1816,11 +1816,14 @@
     return t ? `${d} ${t}` : d;
   }
 
+  // 结束日期前缀跟着状态走：弃读的书不该写「读完」
   function formatEndDate(r) {
     const d = r.endDate || '';
     if (!d) return '';
     const t = r.endTime || '';
-    return `读完 ${d}${t ? ' ' + t : ''}`;
+    const prefix = r.status === 'dropped' ? '弃读'
+      : (r.status === 'finished' ? '读完' : '结束');
+    return prefix + ' ' + d + (t ? ' ' + t : '');
   }
 
   function renderThemes() {
