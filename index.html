@@ -452,7 +452,6 @@
   }
   #overlay-io.show .sheet { transform: none; }
   #overlay-io .sheet-grip { display: none; }
-  /* 实心背景，避免和下面的内容糊在一起误触 */
   .sheet-close {
     position: absolute;
     top: 14px; right: 14px;
@@ -1590,24 +1589,45 @@
     dropped:  { text: '弃读', cls: 'badge-dropped' },
   };
 
+  // 排序用的时间键：优先「读完」，其次「开始」，都取日期+时间
+  function readSortKey(r) {
+    if (r.endDate) return r.endDate + ' ' + (r.endTime || '00:00');
+    if (r.startDate) return r.startDate + ' ' + (r.startTime || '00:00');
+    return r.updatedAt || r.createdAt || '';
+  }
+
+  // 新的排前面
+  function compareByTimeDesc(a, b) {
+    const at = readSortKey(a);
+    const bt = readSortKey(b);
+    if (at === bt) return 0;
+    return at > bt ? -1 : 1;
+  }
+
   function sortRecords(arr) {
     const sorted = [...arr];
     if (sortMode === 'title') {
-      sorted.sort((a, b) =>
-        (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN', { numeric: true })
-      );
-    } else if (sortMode === 'hours') {
-      sorted.sort((a, b) => (b.readingHours ?? -1) - (a.readingHours ?? -1));
-    } else if (sortMode === 'rating') {
-      sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    } else if (sortMode === 'words') {
-      sorted.sort((a, b) => (b.wordCount ?? -1) - (a.wordCount ?? -1));
-    } else {
       sorted.sort((a, b) => {
-        const at = a.endDate || a.startDate || a.updatedAt || a.createdAt || '';
-        const bt = b.endDate || b.startDate || b.updatedAt || b.createdAt || '';
-        return bt.localeCompare(at);
+        const c = (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN', { numeric: true });
+        return c !== 0 ? c : compareByTimeDesc(a, b);
       });
+    } else if (sortMode === 'hours') {
+      sorted.sort((a, b) => {
+        const c = (b.readingHours ?? -1) - (a.readingHours ?? -1);
+        return c !== 0 ? c : compareByTimeDesc(a, b);
+      });
+    } else if (sortMode === 'rating') {
+      sorted.sort((a, b) => {
+        const c = (b.rating || 0) - (a.rating || 0);
+        return c !== 0 ? c : compareByTimeDesc(a, b);
+      });
+    } else if (sortMode === 'words') {
+      sorted.sort((a, b) => {
+        const c = (b.wordCount ?? -1) - (a.wordCount ?? -1);
+        return c !== 0 ? c : compareByTimeDesc(a, b);
+      });
+    } else {
+      sorted.sort(compareByTimeDesc);
     }
     return sorted;
   }
