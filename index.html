@@ -1487,6 +1487,13 @@
     if ($sortBtn) $sortBtn.classList.remove('active');
   }
 
+  // 记住每个筛选条件下的滚动位置，切回来时恢复
+  const scrollMemory = {};
+  function currentScrollKey() {
+    if (currentCategory) return 'cat:' + currentCategory;
+    return 'st:' + currentFilter;
+  }
+
   function renderFilterRow() {
     if (!$filterRow) return;
     const parts = [];
@@ -2688,6 +2695,11 @@
     if (!btn) return;
     const kind = btn.dataset.kind;
     const val = btn.dataset.value || '';
+
+    // 切换前先记住当前筛选下的滚动位置
+    const prevKey = currentScrollKey();
+    scrollMemory[prevKey] = $list.scrollTop;
+
     if (kind === 'all') {
       currentFilter = 'all';
       currentCategory = '';
@@ -2704,6 +2716,13 @@
     }
     renderFilterRow();
     render();
+
+    // 恢复目标筛选下上次的滚动位置
+    const nextKey = currentScrollKey();
+    const top = scrollMemory[nextKey] || 0;
+    requestAnimationFrame(() => {
+      try { $list.scrollTop = top; } catch (err) {}
+    });
   });
 
   $list.addEventListener('click', (e) => {
