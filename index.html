@@ -133,7 +133,18 @@
   .sort-box select option { color: var(--text); }
 
 
-  .filter-row { padding: 8px 16px 4px; display: flex; gap: 6px; flex-shrink: 0; }
+  .filter-row {
+    padding: 8px 16px 4px;
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
   .filter-row button {
     height: 32px; padding: 0 14px;
     border-radius: 999px;
@@ -144,8 +155,10 @@
     cursor: pointer;
     transition: all .15s;
     white-space: nowrap;
+    flex: 0 0 auto;
   }
   .filter-row button.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .filter-sep { flex: 0 0 auto; width: 1px; height: 18px; background: var(--line); align-self: center; margin: 0 3px; }
 
   #list { flex: 1; overflow-y: auto; padding: 10px 16px 110px; -webkit-overflow-scrolling: touch; }
   #list::-webkit-scrollbar { display: none; }
@@ -501,7 +514,7 @@
     cursor: pointer;
   }
   .theme-item-head .del { color: var(--red); border-color: #debdbd; }
-   .theme-item-head .apply.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .theme-item-head .apply.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
   .theme-covers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .theme-cover-thumb {
     width: 44px; height: 60px;
@@ -546,6 +559,32 @@
     font-weight: 600;
     cursor: pointer;
   }
+
+  /* 分类标签 */
+  .category-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .category-chip {
+    display: inline-flex; align-items: center; gap: 2px;
+    height: 34px; padding: 0 6px 0 13px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fafbfc;
+    color: var(--text-sub);
+    font-size: 12.5px;
+  }
+  .category-chip .x {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .category-chip .x:active { background: #eceff2; }
 
   /* 封面显示设置 */
   .cover-settings-row { display: flex; gap: 10px; }
@@ -675,12 +714,7 @@
     </div>
   </div>
 
-  <div class="filter-row">
-    <button data-filter="all" class="active">全部</button>
-    <button data-filter="finished">读完</button>
-    <button data-filter="reading">在读</button>
-    <button data-filter="dropped">弃读</button>
-  </div>
+  <div class="filter-row" id="filter-row"></div>
 
   <div id="list"></div>
 
@@ -790,6 +824,14 @@
     <div style="font-size:11px;color:#8b98a3;margin-top:6px;">支持 .ttf / .otf / .woff；文件过大时可能无法永久保存（本次打开仍生效）</div>
     <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none">
 
+    <div class="section-title">分类标签</div>
+    <div class="new-theme-row">
+      <input id="new-category-name" type="text" placeholder="新建分类，例如：校园" autocomplete="off">
+      <button id="btn-new-category">添加</button>
+    </div>
+    <div class="category-list" id="category-list"></div>
+    <div style="font-size:11px;color:#8b98a3;margin-top:8px;">分类会自动匹配「类型 / 标签」里包含该词的书；点顶部筛选项再点一次可取消。</div>
+
     <div class="section-title">主题与封面</div>
     <div class="new-theme-row">
       <input id="new-theme-name" type="text" placeholder="新建主题名称，例如：春日书单" autocomplete="off">
@@ -856,11 +898,14 @@
   const STORAGE_KEY = 'novel_memo_data_v2';
   const THEMES_KEY = 'novel_memo_themes_v1';
   const SETTINGS_KEY = 'novel_memo_settings_v1';
+  const CATEGORIES_KEY = 'novel_memo_categories_v1';
   let records = [];
   let themes = [];
+  let categories = [];
   let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest' };
   let customFontDataUrl = '';
   let currentFilter = 'all';
+  let currentCategory = '';
   let searchQuery = '';
   let sortMode = 'recent';
   let editingId = null;
@@ -884,6 +929,23 @@
   }
   function getTheme(id) {
     return themes.find(t => t.id === id);
+  }
+
+  // ---------- 分类 ----------
+  function loadCategories() {
+    try {
+      categories = JSON.parse(localStorage.getItem(CATEGORIES_KEY) || '[]');
+    } catch (e) { categories = []; }
+    if (!Array.isArray(categories)) categories = [];
+    categories = categories.filter(c => typeof c === 'string' && c.trim()).map(c => c.trim());
+  }
+  function saveCategories() {
+    try {
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+    } catch (e) {}
+  }
+  function splitTags(s) {
+    return [...new Set(String(s || '').split(/[,，、/;；\n]+/).map(t => t.trim()).filter(Boolean))];
   }
 
   // ---------- 设置 ----------
@@ -940,7 +1002,7 @@
       const fmt = fileName && fileName.toLowerCase().endsWith('.woff') ? 'woff'
         : fileName && fileName.toLowerCase().endsWith('.woff2') ? 'woff2'
         : 'truetype';
-      styleEl.textContent = `@font-face { font-family: 'CustomBookFont'; src: url('${dataUrl}') format('${fmt}'); font-weight: normal; font-style: normal; }`;
+      styleEl.textContent = '@font-face { font-family: \'CustomBookFont\'; src: url(\'' + dataUrl + '\') format(\'' + fmt + '\'); font-weight: normal; font-style: normal; }';
       document.documentElement.style.setProperty('--app-font', "'CustomBookFont', -apple-system, 'PingFang SC', sans-serif");
       document.getElementById('font-status').textContent = '已加载：' + (fileName || '自定义字体');
       document.getElementById('btn-font-remove').style.display = 'block';
@@ -1005,7 +1067,7 @@
   const $search = document.getElementById('search-input');
   const $sort = document.getElementById('sort-select');
   const $fab = document.getElementById('fab');
-  const filterBtns = document.querySelectorAll('.filter-row button');
+  const $filterRow = document.getElementById('filter-row');
   const $overlayEdit = document.getElementById('overlay-edit');
   const $overlayIo = document.getElementById('overlay-io');
   const $sheetTitle = document.getElementById('sheet-title');
@@ -1016,6 +1078,8 @@
   const $themeCoverInput = document.getElementById('theme-cover-input');
   const $fontFileInput = document.getElementById('font-file-input');
   const $newThemeName = document.getElementById('new-theme-name');
+  const $categoryList = document.getElementById('category-list');
+  const $newCategoryName = document.getElementById('new-category-name');
 
   const fTitle = document.getElementById('f-title');
   const fAuthor = document.getElementById('f-author');
@@ -1030,6 +1094,25 @@
   const fNotes = document.getElementById('f-notes');
   let formStatus = 'reading';
   let formRating = 0;
+
+  // ---------- 筛选行 ----------
+  const STATUS_TABS = [['finished', '读完'], ['reading', '在读'], ['dropped', '弃读']];
+
+  function renderFilterRow() {
+    if (!$filterRow) return;
+    const parts = [];
+    const allActive = (!currentCategory && currentFilter === 'all');
+    parts.push('<button data-kind="all" class="' + (allActive ? 'active' : '') + '">全部</button>');
+    categories.forEach(name => {
+      parts.push('<button data-kind="cat" data-value="' + esc(name) + '" class="' + (currentCategory === name ? 'active' : '') + '">' + esc(name) + '</button>');
+    });
+    parts.push('<span class="filter-sep"></span>');
+    STATUS_TABS.forEach(([val, label]) => {
+      const on = (!currentCategory && currentFilter === val);
+      parts.push('<button data-kind="status" data-value="' + val + '" class="' + (on ? 'active' : '') + '">' + label + '</button>');
+    });
+    $filterRow.innerHTML = parts.join('');
+  }
 
   // ---------- 封面轮换分配 ----------
   function assignCovers(shownRecords) {
@@ -1108,6 +1191,9 @@
 
   function render() {
     let shown = records;
+    if (currentCategory) {
+      shown = shown.filter(r => splitTags(r.genre).includes(currentCategory));
+    }
     if (currentFilter !== 'all') shown = shown.filter(r => r.status === currentFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -1148,9 +1234,8 @@
         ? `<div class="stars">${[1,2,3,4,5].map(i =>
             `<span class="${i <= r.rating ? 'on' : ''}">${STAR_SVG}</span>`
           ).join('')}</div>` : '';
-      const tags = [...new Set(String(r.genre || '').split(/[,，、/;；\n]+/).map(s => s.trim()).filter(Boolean))];
+      const tags = splitTags(r.genre);
       const genreTag = tags.length ? `<div class="card-genres">${tags.map(t => `<span class="card-genre">${esc(t)}</span>`).join('')}</div>` : '';
-      // 主题标签已移除
       const notes = r.notes ? `<div class="card-notes">${esc(r.notes)}</div>` : '';
       const coverUrl = coverMap[r.id];
       const coverHtml = coverUrl
@@ -1199,16 +1284,7 @@
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c =>
-      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'"',"'":'&#39;' }[c]));
-  }
-
-  function formatDateRange(r) {
-    const s = r.startDate || '';
-    const e = r.endDate || '';
-    if (s && e && s !== e) return `${s} ~ ${e}`;
-    if (s) return s;
-    if (e) return e;
-    return '';
+      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
 
   function formatStartTime(r) {
@@ -1252,9 +1328,16 @@
     }).join('');
   }
 
-  function updateThemeSelect() {
-    const opts = themes.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
-    $fTheme.innerHTML = `<option value="">无主题</option>${opts}`;
+  // ---------- 分类管理渲染 ----------
+  function renderCategories() {
+    if (!$categoryList) return;
+    if (categories.length === 0) {
+      $categoryList.innerHTML = '<div style="font-size:12px;color:#8b98a3;">还没有分类，先在上方添加一个</div>';
+      return;
+    }
+    $categoryList.innerHTML = categories.map((c, i) =>
+      '<span class="category-chip">' + esc(c) + '<button class="x" data-idx="' + i + '" title="删除">×</button></span>'
+    ).join('');
   }
 
   let addingCoversForThemeId = null;
@@ -1579,6 +1662,7 @@
   document.getElementById('menu-btn').addEventListener('click', () => {
     $ioResult.textContent = '';
     renderThemes();
+    renderCategories();
     $overlayIo.classList.add('show');
   });
 
@@ -1612,6 +1696,35 @@
   document.getElementById('btn-font-remove').addEventListener('click', () => {
     applyCustomFont('', '');
     try { localStorage.removeItem('novel_memo_custom_font_v1'); } catch (e) {}
+  });
+
+  // 分类
+  document.getElementById('btn-new-category').addEventListener('click', () => {
+    const name = $newCategoryName.value.trim();
+    if (!name) { alert('请输入分类名称'); return; }
+    if (name.length > 12) { alert('分类名称最多 12 个字'); return; }
+    if (categories.includes(name)) { alert('这个分类已经有了'); return; }
+    categories.push(name);
+    saveCategories();
+    renderCategories();
+    renderFilterRow();
+    render();
+    $newCategoryName.value = '';
+  });
+
+  $categoryList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.x');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    const name = categories[idx];
+    if (name === undefined) return;
+    if (!confirm(`删除分类「${name}」？`)) return;
+    categories.splice(idx, 1);
+    if (currentCategory === name) currentCategory = '';
+    saveCategories();
+    renderCategories();
+    renderFilterRow();
+    render();
   });
 
   // 主题
@@ -1729,12 +1842,27 @@
     render();
   });
 
-  filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentFilter = btn.dataset.filter;
-      filterBtns.forEach(b => b.classList.toggle('active', b === btn));
-      render();
-    });
+  $filterRow.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const kind = btn.dataset.kind;
+    const val = btn.dataset.value || '';
+    if (kind === 'all') {
+      currentFilter = 'all';
+      currentCategory = '';
+    } else if (kind === 'cat') {
+      currentCategory = (currentCategory === val) ? '' : val;
+      currentFilter = 'all';
+    } else if (kind === 'status') {
+      if (currentFilter === val && !currentCategory) {
+        currentFilter = 'all';
+      } else {
+        currentFilter = val;
+        currentCategory = '';
+      }
+    }
+    renderFilterRow();
+    render();
   });
 
   $list.addEventListener('click', (e) => {
@@ -1756,7 +1884,9 @@
   loadSettings();
   loadCustomFontFromStorage();
   loadThemes();
+  loadCategories();
   load();
+  renderFilterRow();
   render();
 })();
 </script>
