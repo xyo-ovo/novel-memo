@@ -30,6 +30,8 @@
     --green-soft: #e9f3ee;
     --red: #be6e6e;
     --red-soft: #f8eaea;
+    --orange: #c97a35;
+    --orange-soft: #fbeee1;
     --gold: #c99a3b;
     --radius: 18px;
     --radius-sm: 12px;
@@ -79,7 +81,7 @@
   .stats .lbl { font-size: 10px; color: var(--text-dim); letter-spacing: .5px; }
   .stats .st-done .num { color: var(--green); }
   .stats .st-reading .num { color: var(--blue); }
-  .stats .st-dropped .num { color: var(--red); }
+  .stats .st-dropped .num { color: var(--orange); }
   .stats .st-wishlist .num { color: var(--text-sub); }
   #menu-btn {
     width: 40px; height: 40px;
@@ -229,11 +231,22 @@
     white-space: nowrap;
     letter-spacing: .3px;
   }
-  .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .badge-finished { background: var(--green-soft); color: var(--green); }
-  .badge-reading  { background: var(--blue-soft);  color: var(--blue); }
-  .badge-dropped  { background: var(--red-soft);   color: var(--red); }
-  .badge-wishlist { background: var(--line);       color: var(--text-sub); }
+  .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .badge-finished { background: var(--green-soft);  color: var(--green); }
+  .badge-reading  { background: var(--blue-soft);   color: var(--blue); }
+  .badge-dropped  { background: var(--orange-soft); color: var(--orange); }
+  .badge-wishlist { background: var(--line);        color: var(--text-sub); }
+  /* 弃读用斜杠、想读用空心圆，和实心圆拉开区分 */
+  .badge-dropped::before {
+    width: 8px; height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    transform: rotate(-30deg);
+  }
+  .badge-wishlist::before {
+    background: transparent;
+    border: 1.5px solid currentColor;
+  }
 
   .meta-line { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11.5px; color: var(--text-dim); }
   .meta-line .meta-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -414,7 +427,7 @@
   .status-picker button.on-wishlist { background: var(--line);        border-color: var(--line);   color: var(--text-sub); font-weight: 600; }
   .status-picker button.on-finished { background: var(--green-soft); border-color: #bcd9cd; color: var(--green); font-weight: 600; }
   .status-picker button.on-reading  { background: var(--blue-soft);  border-color: #bcd0e5; color: var(--blue);  font-weight: 600; }
-  .status-picker button.on-dropped  { background: var(--red-soft);   border-color: #debdbd; color: var(--red);   font-weight: 600; }
+  .status-picker button.on-dropped  { background: var(--orange-soft); border-color: #e5c9ab; color: var(--orange); font-weight: 600; }
 
   .sheet-btns { display: flex; gap: 10px; margin-top: 22px; }
   .sheet-btns button {
@@ -966,11 +979,11 @@
 
   // ---------- 设置 ----------
   const COLOR_THEMES = {
-    forest: { bg:'#f5f6f8', card:'#ffffff', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
-    mist: { bg:'#f4f6f9', card:'#ffffff', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
-    caramel: { bg:'#f8f5f2', card:'#ffffff', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
-    sakura: { bg:'#faf6f7', card:'#ffffff', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', gold:'#c99a3b' },
-    night: { bg:'#1e242a', card:'#282f36', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', gold:'#d0a44e' }
+    forest: { bg:'#f5f6f8', card:'#ffffff', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },
+    mist: { bg:'#f4f6f9', card:'#ffffff', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c07a3a', 'orange-soft':'#faf0e3', gold:'#c99a3b' },
+    caramel: { bg:'#f8f5f2', card:'#ffffff', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#b8742f', 'orange-soft':'#f9eddf', gold:'#c99a3b' },
+    sakura: { bg:'#faf6f7', card:'#ffffff', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c47a3c', 'orange-soft':'#fbeee2', gold:'#c99a3b' },
+    night: { bg:'#1e242a', card:'#282f36', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', orange:'#d99a5e', 'orange-soft':'#3a2f22', gold:'#d0a44e' }
   };
   function applyColorTheme(themeId) {
     const t = COLOR_THEMES[themeId] || COLOR_THEMES.forest;
