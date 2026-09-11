@@ -749,9 +749,9 @@
   .io-row button:active { background: #f3f5f7; }
   .io-row button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .io-row button.danger { background: var(--red-soft); border-color: #debdbd; color: var(--red); }
-  .io-result { margin-top: 12px; font-size: 13px; line-height: 1.7; color: var(--green); white-space: pre-wrap; }
+  .io-row button:disabled { opacity: .55; cursor: default; }
+  .io-result { margin-top: 12px; font-size: 13px; line-height: 1.7; color: var(--green); white-space: pre-wrap; word-break: break-all; }
 
-  /* 备份文本兜底框（可选中的 textarea） */
   #backup-text {
     width: 100%;
     min-height: 140px;
@@ -957,6 +957,23 @@
     <div class="sheet">
       <h2>设置与数据</h2>
 
+      <div class="section-title">云端备份（GitHub）</div>
+      <div class="field">
+        <label>访问令牌 Token（需 gist 权限）</label>
+        <input id="gist-token" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+        <div class="hint">只保存在本机浏览器里，不会上传到别处。生成方式：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → 勾选 gist</div>
+      </div>
+      <div class="field">
+        <label>Gist ID（换设备时填入，平时自动填）</label>
+        <input id="gist-id" type="text" placeholder="上传一次后自动生成" autocomplete="off">
+        <div class="hint" id="gist-id-hint"></div>
+      </div>
+      <div class="io-row">
+        <button id="btn-gist-upload" class="primary">上传到 GitHub</button>
+        <button id="btn-gist-download">从 GitHub 恢复</button>
+      </div>
+      <div class="io-result" id="gist-result"></div>
+
       <div class="section-title">字号</div>
       <div class="color-theme-row" id="font-size-row">
         <button class="color-swatch" data-font-size="0.9">小</button>
@@ -1034,7 +1051,7 @@
         </select>
       </div>
 
-      <div class="section-title">批量导入 / 备份</div>
+      <div class="section-title">批量导入 / 本地备份</div>
       <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
       <div class="io-row">
         <button id="btn-import-text" class="primary">解析并导入</button>
@@ -1061,7 +1078,7 @@
   let records = [];
   let themes = [];
   let categories = [];
-  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest', fontScale: 1 };
+  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '' };
   let currentFilter = 'all';
   let currentCategory = '';
   let searchQuery = '';
@@ -1076,7 +1093,6 @@
   const STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7L5.8 21l1.6-7L2 9.3l7.1-.7Z"/></svg>';
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
 
-  // ---------- WebView 检测（App 内不能直接触发下载，会崩） ----------
   function isLikelyWebView() {
     try {
       const ua = navigator.userAgent || '';
@@ -1220,7 +1236,7 @@
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
       if (s && typeof s === 'object') {
-        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest', fontScale: 1 }, s);
+        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '' }, s);
       }
     } catch (e) {}
     document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
@@ -1231,8 +1247,13 @@
     document.getElementById('set-cover-radius').value = settings.coverRadius;
     const durSel = document.getElementById('set-duration-format');
     if (durSel) durSel.value = settings.durationFormat;
+    const gToken = document.getElementById('gist-token');
+    const gId = document.getElementById('gist-id');
+    if (gToken) gToken.value = settings.gistToken || '';
+    if (gId) gId.value = settings.gistId || '';
     applyColorTheme(settings.colorTheme);
     applyFontScale();
+    updateGistHint();
   }
   function saveSettings() {
     try {
@@ -1862,7 +1883,6 @@
     $importArea.value = '';
   }
 
-  // ---------- 导出：浏览器下载，App 里走剪贴板（避免 WebView 崩溃） ----------
   function handleExport() {
     if (records.length === 0) {
       $ioResult.textContent = '当前没有记录可导出';
@@ -1889,12 +1909,12 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `小说备忘录备份_${new Date().toISOString().slice(0,10)}.json`;
+      a.download = '小说备忘录备份_' + new Date().toISOString().slice(0,10) + '.json';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 3000);
-      $ioResult.textContent = `已导出 ${records.length} 条记录`;
+      $ioResult.textContent = '已导出 ' + records.length + ' 条记录';
       $ioResult.style.color = '#4a9e7b';
     } catch (e) {
       copyTextToClipboard(data).then(() => {
@@ -1923,6 +1943,141 @@
       showBackupText(data);
       $ioResult.textContent = '自动复制失败，请长按下方文本手动全选复制';
       $ioResult.style.color = '#be6e6e';
+    });
+  }
+
+  // ---------- GitHub Gist 云端备份 ----------
+  const GIST_FILENAME = 'novel-memo-backup.json';
+  const GIST_DESC = '小说备忘录备份（novel-memo）';
+
+  function gistRequest(method, path, token, body) {
+    const headers = { 'Accept': 'application/vnd.github+json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    if (body) headers['Content-Type'] = 'application/json';
+    return fetch('https://api.github.com' + path, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined
+    }).then((res) => {
+      if (!res.ok) {
+        return res.json().catch(() => ({})).then((j) => {
+          const msg = (j && j.message) ? j.message : ('HTTP ' + res.status);
+          throw new Error(msg + '（' + res.status + '）');
+        });
+      }
+      return res.json();
+    });
+  }
+
+  function setGistResult(msg, ok) {
+    const el = document.getElementById('gist-result');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = ok === true ? '#4a9e7b' : (ok === false ? '#be6e6e' : '#8b98a3');
+  }
+
+  function updateGistHint() {
+    const el = document.getElementById('gist-id-hint');
+    if (!el) return;
+    const id = (settings.gistId || '').trim();
+    el.textContent = id ? ('已绑定 Gist：' + id) : '还没有上传过；上传成功后这里会显示 Gist ID';
+  }
+
+  function gistSaveSettings() {
+    const t = document.getElementById('gist-token');
+    const i = document.getElementById('gist-id');
+    if (t) settings.gistToken = t.value.trim();
+    if (i) settings.gistId = i.value.trim();
+    saveSettings();
+    updateGistHint();
+  }
+
+  function handleGistUpload() {
+    gistSaveSettings();
+    const token = (settings.gistToken || '').trim();
+    if (!token) { setGistResult('请先填入 GitHub Token', false); return; }
+    if (records.length === 0) { setGistResult('当前没有记录可备份', false); return; }
+    if (records.length === 0) return;
+
+    const content = JSON.stringify(records, null, 2);
+    setGistResult('正在上传…', null);
+
+    const files = {};
+    files[GIST_FILENAME] = { content: content };
+
+    const existingId = (settings.gistId || '').trim();
+    const p = existingId
+      ? gistRequest('PATCH', '/gists/' + existingId, token, { files: files })
+      : gistRequest('POST', '/gists', token, { description: GIST_DESC, public: false, files: files });
+
+    p.then((gist) => {
+      settings.gistId = gist.id;
+      saveSettings();
+      const idInput = document.getElementById('gist-id');
+      if (idInput) idInput.value = gist.id;
+      updateGistHint();
+      setGistResult('上传成功：' + records.length + ' 条记录\nGist ID：' + gist.id + '\n（换设备时把它填到上面即可恢复）', true);
+    }).catch((e) => {
+      setGistResult('上传失败：' + e.message, false);
+    });
+  }
+
+  function handleGistDownload() {
+    gistSaveSettings();
+    const token = (settings.gistToken || '').trim();
+    const id = (settings.gistId || '').trim();
+    if (!id) { setGistResult('请先填入 Gist ID（或先上传一次）', false); return; }
+    setGistResult('正在下载…', null);
+
+    gistRequest('GET', '/gists/' + id, token).then((gist) => {
+      const files = gist.files || {};
+      let content = '';
+      if (files[GIST_FILENAME] && files[GIST_FILENAME].content) {
+        content = files[GIST_FILENAME].content;
+      } else {
+        const keys = Object.keys(files);
+        for (let i = 0; i < keys.length; i++) {
+          if (files[keys[i]] && files[keys[i]].content) { content = files[keys[i]].content; break; }
+        }
+      }
+      if (!content) throw new Error('Gist 里没找到备份内容');
+      let data;
+      try { data = JSON.parse(content); } catch (err) { throw new Error('备份内容不是有效 JSON'); }
+      if (!Array.isArray(data)) throw new Error('备份格式不对');
+
+      let added = 0, skipped = 0;
+      const seen = new Set(records.map(r => (r.title || '') + '|' + (r.author || '')));
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        if (!item || !item.title) { skipped++; continue; }
+        const key = (item.title || '') + '|' + (item.author || '');
+        if (seen.has(key)) { skipped++; continue; }
+        seen.add(key);
+        records.push({
+          id: item.id || makeId(),
+          title: item.title,
+          author: item.author || '',
+          genre: item.genre || '',
+          category: item.category || '',
+          status: item.status || 'finished',
+          rating: item.rating || 0,
+          startDate: item.startDate || '',
+          startTime: item.startTime || '',
+          endDate: item.endDate || '',
+          endTime: item.endTime || '',
+          readingHours: item.readingHours ?? null,
+          wordCount: item.wordCount ?? null,
+          notes: item.notes || '',
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+        });
+        added++;
+      }
+      save();
+      render();
+      setGistResult('恢复完成：新增 ' + added + ' 条，跳过 ' + skipped + ' 条（重复）', true);
+    }).catch((e) => {
+      setGistResult('恢复失败：' + e.message, false);
     });
   }
 
@@ -1973,7 +2128,7 @@
 
   function handleClearAll() {
     if (records.length === 0) return;
-    if (!confirm(`确定删除全部 ${records.length} 条记录吗？此操作不可撤销！\n建议先导出备份。`)) return;
+    if (!confirm('确定删除全部 ' + records.length + ' 条记录吗？此操作不可撤销！\n建议先上传到 GitHub 或导出备份。')) return;
     records = [];
     save();
     render();
@@ -2097,15 +2252,25 @@
 
   document.getElementById('menu-btn').addEventListener('click', () => {
     $ioResult.textContent = '';
+    setGistResult('', null);
     hideBackupText();
     renderThemes();
     renderCategories();
+    updateGistHint();
     $overlayIo.classList.add('show');
   });
 
   document.getElementById('btn-io-close').addEventListener('click', () => {
     $overlayIo.classList.remove('show');
   });
+
+  document.getElementById('btn-gist-upload').addEventListener('click', handleGistUpload);
+  document.getElementById('btn-gist-download').addEventListener('click', handleGistDownload);
+
+  const $gistToken = document.getElementById('gist-token');
+  const $gistId = document.getElementById('gist-id');
+  if ($gistToken) $gistToken.addEventListener('change', gistSaveSettings);
+  if ($gistId) $gistId.addEventListener('change', gistSaveSettings);
 
   document.getElementById('font-size-row').addEventListener('click', (e) => {
     const btn = e.target.closest('.color-swatch');
