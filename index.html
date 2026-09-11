@@ -751,6 +751,26 @@
   .io-row button.danger { background: var(--red-soft); border-color: #debdbd; color: var(--red); }
   .io-result { margin-top: 12px; font-size: 13px; line-height: 1.7; color: var(--green); white-space: pre-wrap; }
 
+  /* 备份文本兜底框（可选中的 textarea） */
+  #backup-text {
+    width: 100%;
+    min-height: 140px;
+    margin-top: 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: #fafbfc;
+    color: var(--text);
+    padding: 11px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    outline: none;
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    resize: vertical;
+    display: none;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
   #overlay-edit { align-items: stretch; }
   #overlay-edit .sheet {
     width: 100%;
@@ -1014,15 +1034,17 @@
         </select>
       </div>
 
-      <div class="section-title">批量导入</div>
+      <div class="section-title">批量导入 / 备份</div>
       <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
       <div class="io-row">
         <button id="btn-import-text" class="primary">解析并导入</button>
         <button id="btn-export">导出备份</button>
+        <button id="btn-copy">复制备份</button>
         <button id="btn-import-file">导入文件</button>
         <button id="btn-clear-all" class="danger">清空全部</button>
       </div>
       <div class="io-result" id="io-result"></div>
+      <textarea id="backup-text" readonly></textarea>
       <input type="file" id="file-input" accept=".json,application/json" style="display:none">
     </div>
   </div>
@@ -1053,6 +1075,59 @@
 
   const STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7L5.8 21l1.6-7L2 9.3l7.1-.7Z"/></svg>';
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
+
+  // ---------- WebView 检测（App 内不能直接触发下载，会崩） ----------
+  function isLikelyWebView() {
+    try {
+      const ua = navigator.userAgent || '';
+      if (/Android/i.test(ua) && /\bwv\b/.test(ua)) return true;
+      if (/Android/i.test(ua) && /Version\/\d+\.\d+/.test(ua) && !/Chrome\/\d+/.test(ua)) return true;
+      return false;
+    } catch (e) { return false; }
+  }
+
+  function copyTextToClipboard(text) {
+    return new Promise((resolve, reject) => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(resolve).catch(() => {
+          fallbackCopy(text) ? resolve() : reject(new Error('copy failed'));
+        });
+        return;
+      }
+      fallbackCopy(text) ? resolve() : reject(new Error('copy failed'));
+    });
+  }
+
+  function fallbackCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  function showBackupText(data) {
+    const ta = document.getElementById('backup-text');
+    if (!ta) return;
+    ta.value = data;
+    ta.style.display = 'block';
+    setTimeout(() => { try { ta.focus(); ta.select(); } catch (e) {} }, 30);
+  }
+
+  function hideBackupText() {
+    const ta = document.getElementById('backup-text');
+    if (ta) { ta.style.display = 'none'; ta.value = ''; }
+  }
 
   function loadThemes() {
     try {
@@ -1787,6 +1862,7 @@
     $importArea.value = '';
   }
 
+  // ---------- 导出：浏览器下载，App 里走剪贴板（避免 WebView 崩溃） ----------
   function handleExport() {
     if (records.length === 0) {
       $ioResult.textContent = '当前没有记录可导出';
@@ -1794,17 +1870,60 @@
       return;
     }
     const data = JSON.stringify(records, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `小说备忘录备份_${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
-    $ioResult.textContent = `已导出 ${records.length} 条记录`;
-    $ioResult.style.color = '#4a9e7b';
+
+    if (isLikelyWebView()) {
+      copyTextToClipboard(data).then(() => {
+        hideBackupText();
+        $ioResult.textContent = '已在 App 内复制 ' + records.length + ' 条记录到剪贴板，粘贴保存即可';
+        $ioResult.style.color = '#4a9e7b';
+      }).catch(() => {
+        showBackupText(data);
+        $ioResult.textContent = '自动复制失败，请长按下方文本手动全选复制';
+        $ioResult.style.color = '#be6e6e';
+      });
+      return;
+    }
+
+    try {
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `小说备忘录备份_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      $ioResult.textContent = `已导出 ${records.length} 条记录`;
+      $ioResult.style.color = '#4a9e7b';
+    } catch (e) {
+      copyTextToClipboard(data).then(() => {
+        $ioResult.textContent = '下载不可用，已改为复制到剪贴板';
+        $ioResult.style.color = '#4a9e7b';
+      }).catch(() => {
+        showBackupText(data);
+        $ioResult.textContent = '导出失败，请长按下方文本手动复制';
+        $ioResult.style.color = '#be6e6e';
+      });
+    }
+  }
+
+  function handleCopyBackup() {
+    if (records.length === 0) {
+      $ioResult.textContent = '当前没有记录可复制';
+      $ioResult.style.color = '#be6e6e';
+      return;
+    }
+    const data = JSON.stringify(records, null, 2);
+    copyTextToClipboard(data).then(() => {
+      hideBackupText();
+      $ioResult.textContent = '已复制 ' + records.length + ' 条记录到剪贴板';
+      $ioResult.style.color = '#4a9e7b';
+    }).catch(() => {
+      showBackupText(data);
+      $ioResult.textContent = '自动复制失败，请长按下方文本手动全选复制';
+      $ioResult.style.color = '#be6e6e';
+    });
   }
 
   function handleImportFile(file) {
@@ -1978,6 +2097,7 @@
 
   document.getElementById('menu-btn').addEventListener('click', () => {
     $ioResult.textContent = '';
+    hideBackupText();
     renderThemes();
     renderCategories();
     $overlayIo.classList.add('show');
@@ -2023,6 +2143,7 @@
   document.getElementById('btn-save').addEventListener('click', handleSave);
   document.getElementById('btn-import-text').addEventListener('click', handleImportText);
   document.getElementById('btn-export').addEventListener('click', handleExport);
+  document.getElementById('btn-copy').addEventListener('click', handleCopyBackup);
   document.getElementById('btn-clear-all').addEventListener('click', handleClearAll);
   document.getElementById('btn-import-file').addEventListener('click', () => $fileInput.click());
 
