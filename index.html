@@ -117,7 +117,6 @@
   .search-box input::placeholder { color: var(--text-dim); }
   .search-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,107,94,.08); }
 
-  /* 排序按钮 + 自定义菜单（替掉原生 select，样式可控） */
   .sort-box { position: relative; flex-shrink: 0; }
   #sort-btn {
     height: 44px;
@@ -434,7 +433,6 @@
 
   /* ---------- 设置面板：居中悬浮卡片 ---------- */
   #overlay-io { align-items: center; justify-content: center; padding: 18px; }
-  /* 让整个卡片（含右上角 ×）一起做同一个入场动画，避免 × 先冒出来 */
   .modal-wrap {
     position: relative;
     width: min(100%, 520px);
@@ -454,22 +452,24 @@
   }
   #overlay-io.show .sheet { transform: none; }
   #overlay-io .sheet-grip { display: none; }
+  /* 实心背景，避免和下面的内容糊在一起误触 */
   .sheet-close {
     position: absolute;
     top: 14px; right: 14px;
     width: 30px; height: 30px;
     border-radius: 50%;
-    border: none;
-    background: rgba(0,0,0,.05);
-    color: var(--text-dim);
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text-sub);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 6;
-    transition: background .15s, color .15s;
+    box-shadow: 0 1px 3px rgba(30,40,50,.08);
+    transition: background .15s, color .15s, border-color .15s;
   }
-  .sheet-close:active { background: rgba(0,0,0,.11); color: var(--text-sub); }
+  .sheet-close:active { background: var(--text-dim); border-color: var(--text-dim); color: #fff; }
 
   /* 字号自定义输入 */
   .fs-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
@@ -947,7 +947,7 @@
       </div>
       <div class="field">
         <label>开始时间</label>
-        <input id="f-start-time" type="time">
+        <input id="f-start-time" type="text" inputmode="numeric" placeholder="如 1635" maxlength="6" autocomplete="off">
       </div>
     </div>
     <div class="row-2">
@@ -957,7 +957,7 @@
       </div>
       <div class="field">
         <label>结束时间</label>
-        <input id="f-end-time" type="time">
+        <input id="f-end-time" type="text" inputmode="numeric" placeholder="如 1717" maxlength="6" autocomplete="off">
       </div>
     </div>
     <div class="row-2">
@@ -991,7 +991,7 @@
 <div class="overlay" id="overlay-io">
   <div class="modal-wrap">
     <button class="sheet-close" id="btn-io-close" title="关闭">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
     </button>
     <div class="sheet">
       <h2>设置与数据</h2>
@@ -1625,6 +1625,24 @@
     m = val.match(/^(\d{4})[/\-.]?(\d{1,2})[/\-.]?(\d{1,2})$/);
     if (m) {
       return m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0');
+    }
+    return val;
+  }
+
+  function normalizeTimeInput(val) {
+    val = String(val || '').trim();
+    if (!val) return '';
+    const m = val.match(/^(\d{1,2})\s*[:：.．]?\s*(\d{1,2})$/);
+    if (m) {
+      const h = parseInt(m[1], 10);
+      const mi = parseInt(m[2], 10);
+      if (h >= 0 && h <= 23 && mi >= 0 && mi <= 59) {
+        return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+      }
+    }
+    if (/^\d{1,2}$/.test(val)) {
+      const h = parseInt(val, 10);
+      if (h >= 0 && h <= 23) return String(h).padStart(2, '0') + ':00';
     }
     return val;
   }
@@ -2270,9 +2288,9 @@
       status: formStatus,
       rating: formRating,
       startDate: normalizeDateInput(fStart.value),
-      startTime: fStartTime.value,
+      startTime: normalizeTimeInput(fStartTime.value),
       endDate: normalizeDateInput(fEnd.value),
-      endTime: fEndTime.value,
+      endTime: normalizeTimeInput(fEndTime.value),
       readingHours,
       wordCount,
       notes: fNotes.value.trim(),
@@ -2331,7 +2349,6 @@
   if ($gistToken) $gistToken.addEventListener('change', gistSaveSettings);
   if ($gistId) $gistId.addEventListener('change', gistSaveSettings);
 
-  // 排序：自定义菜单
   if ($sortBtn) {
     $sortBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -2382,8 +2399,11 @@
     applyFontScale();
   });
 
-  document.getElementById('f-start').addEventListener('blur', (e) => { e.target.value = normalizeDateInput(e.target.value); });
-  document.getElementById('f-end').addEventListener('blur', (e) => { e.target.value = normalizeDateInput(e.target.value); });
+  fStart.addEventListener('blur', () => { fStart.value = normalizeDateInput(fStart.value); });
+  fEnd.addEventListener('blur', () => { fEnd.value = normalizeDateInput(fEnd.value); });
+  fStartTime.addEventListener('blur', () => { fStartTime.value = normalizeTimeInput(fStartTime.value); });
+  fEndTime.addEventListener('blur', () => { fEndTime.value = normalizeTimeInput(fEndTime.value); });
+
   document.getElementById('btn-back').addEventListener('click', closeEditSheet);
   document.getElementById('btn-delete').addEventListener('click', () => {
     if (editingId) { handleDelete(editingId); closeEditSheet(); }
@@ -2688,7 +2708,6 @@
     }
   });
 
-  // 点空白处收起排序菜单
   document.addEventListener('click', (e) => {
     if ($sortMenu && $sortMenu.classList.contains('show')) {
       if (!e.target.closest('.sort-box')) closeSortMenu();
