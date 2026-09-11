@@ -44,6 +44,8 @@
     --cover-radius: 0px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* 表单控件默认不继承字体，这里统一让它们跟随页面字体 */
+  button, input, select, textarea { font-family: inherit; }
   html, body {
     height: 100%;
     background: var(--bg);
@@ -982,14 +984,14 @@
     forest: { bg:'#f5f6f8', card:'#ffffff', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },
     mist: { bg:'#f4f6f9', card:'#ffffff', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c07a3a', 'orange-soft':'#faf0e3', gold:'#c99a3b' },
     caramel: { bg:'#f8f5f2', card:'#ffffff', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#b8742f', 'orange-soft':'#f9eddf', gold:'#c99a3b' },
-    sakura: { bg:'#faf6f7', card:'#ffffff', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c47a3c', 'orange-soft':'#fbeee2', gold:'#c99a3b' },
+    sakura: { bg:'#faf6f7', card:'#ffffff', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#3f9b7a', 'green-soft':'#e8f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c4762c', 'orange-soft':'#fbeee0', gold:'#c99a3b' },
     night: { bg:'#1e242a', card:'#282f36', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', orange:'#d99a5e', 'orange-soft':'#3a2f22', gold:'#d0a44e' }
   };
   function applyColorTheme(themeId) {
     const t = COLOR_THEMES[themeId] || COLOR_THEMES.forest;
     Object.keys(t).forEach(k => document.documentElement.style.setProperty('--' + k, t[k]));
-    document.documentElement.style.setProperty('--green', t.accent);
-    document.documentElement.style.setProperty('--green-soft', t['accent-soft']);
+    document.documentElement.style.setProperty('--green', t.green);
+    document.documentElement.style.setProperty('--green-soft', t['green-soft']);
     document.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', b.dataset.colorTheme === (themeId || 'forest')));
     const mt = document.querySelector('meta[name="theme-color"]');
     if (mt) mt.setAttribute('content', t.accent);
