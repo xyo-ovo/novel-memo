@@ -1139,6 +1139,134 @@
   const BOOK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
   const WAIT_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v4l-5 5 5 5v4H7v-4l5-5-5-5z"/></svg>';
 
+  // ---------- 备份包：书 + 分类 + 主题 + 设置 ----------
+  function buildBackup() {
+    return {
+      app: 'novel-memo',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      records: records,
+      categories: categories,
+      themes: themes,
+      settings: {
+        coverWidth: settings.coverWidth,
+        coverGap: settings.coverGap,
+        coverRadius: settings.coverRadius,
+        activeThemeId: settings.activeThemeId,
+        durationFormat: settings.durationFormat,
+        colorTheme: settings.colorTheme,
+        fontScale: settings.fontScale
+      }
+    };
+  }
+
+  // 兼容老备份（纯数组 = 只有书）和新备份（对象）
+  function extractBackup(data) {
+    if (Array.isArray(data)) {
+      return { records: data, categories: null, themes: null, settings: null };
+    }
+    if (data && typeof data === 'object' && Array.isArray(data.records)) {
+      return {
+        records: data.records,
+        categories: Array.isArray(data.categories) ? data.categories : null,
+        themes: Array.isArray(data.themes) ? data.themes : null,
+        settings: (data.settings && typeof data.settings === 'object') ? data.settings : null
+      };
+    }
+    return null;
+  }
+
+  function applyBackup(bk) {
+    const res = { added: 0, skipped: 0, catAdded: 0, themeAdded: 0, settingsApplied: false };
+
+    // ① 书：按「书名|作者」去重合并
+    const seen = new Set(records.map(r => (r.title || '') + '|' + (r.author || '')));
+    bk.records.forEach(item => {
+      if (!item || !item.title) { res.skipped++; return; }
+      const key = (item.title || '') + '|' + (item.author || '');
+      if (seen.has(key)) { res.skipped++; return; }
+      seen.add(key);
+      records.push({
+        id: item.id || makeId(),
+        title: item.title,
+        author: item.author || '',
+        genre: item.genre || '',
+        category: item.category || '',
+        status: item.status || 'finished',
+        rating: item.rating || 0,
+        wishDate: item.wishDate || '',
+        startDate: item.startDate || '',
+        startTime: item.startTime || '',
+        endDate: item.endDate || '',
+        endTime: item.endTime || '',
+        readingHours: item.readingHours ?? null,
+        wordCount: item.wordCount ?? null,
+        notes: item.notes || '',
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: item.updatedAt || new Date().toISOString(),
+      });
+      res.added++;
+    });
+    if (res.added) save();
+
+    // ② 分类：合并去重
+    if (bk.categories) {
+      bk.categories.forEach(c => {
+        if (typeof c === 'string' && c.trim() && categories.indexOf(c.trim()) < 0) {
+          categories.push(c.trim());
+          res.catAdded++;
+        }
+      });
+      if (res.catAdded) saveCategories();
+    }
+
+    // ③ 主题：按 id 合并去重
+    if (bk.themes) {
+      const ids = new Set(themes.map(t => t.id));
+      bk.themes.forEach(t => {
+        if (t && t.id && !ids.has(t.id)) {
+          themes.push(t);
+          ids.add(t.id);
+          res.themeAdded++;
+        }
+      });
+      if (res.themeAdded) saveThemes();
+    }
+
+    // ④ 设置：覆盖（不动 token / Gist ID）
+    if (bk.settings) {
+      ['coverWidth', 'coverGap', 'coverRadius', 'activeThemeId', 'durationFormat', 'colorTheme', 'fontScale'].forEach(k => {
+        if (typeof bk.settings[k] !== 'undefined') settings[k] = bk.settings[k];
+      });
+      saveSettings();
+      document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
+      document.documentElement.style.setProperty('--cover-gap', settings.coverGap + 'px');
+      document.documentElement.style.setProperty('--cover-radius', settings.coverRadius + 'px');
+      const wEl = document.getElementById('set-cover-width');
+      const gEl = document.getElementById('set-cover-gap');
+      const rEl = document.getElementById('set-cover-radius');
+      if (wEl) wEl.value = settings.coverWidth;
+      if (gEl) gEl.value = settings.coverGap;
+      if (rEl) rEl.value = settings.coverRadius;
+      const dEl = document.getElementById('set-duration-format');
+      if (dEl) dEl.value = settings.durationFormat;
+      applyColorTheme(settings.colorTheme);
+      applyFontScale();
+      res.settingsApplied = true;
+    }
+
+    return res;
+  }
+
+  function summarizeBackup(res) {
+    const bits = ['导入 ' + res.added + ' 条记录'];
+    if (res.catAdded) bits.push(res.catAdded + ' 个分类');
+    if (res.themeAdded) bits.push(res.themeAdded + ' 个主题');
+    if (res.settingsApplied) bits.push('设置已更新');
+    if (res.skipped) bits.push('跳过 ' + res.skipped + ' 条重复');
+    return '✓ ' + bits.join('，');
+  }
+
   function isLikelyWebView() {
     try {
       const ua = navigator.userAgent || '';
@@ -2050,17 +2178,17 @@
   }
 
   function handleExport() {
-    if (records.length === 0) {
-      $ioResult.textContent = '当前没有记录可导出';
+    if (records.length === 0 && categories.length === 0 && themes.length === 0) {
+      $ioResult.textContent = '当前没有数据可导出';
       $ioResult.style.color = '#be6e6e';
       return;
     }
-    const data = JSON.stringify(records, null, 2);
+    const data = JSON.stringify(buildBackup(), null, 2);
 
     if (isLikelyWebView()) {
       copyTextToClipboard(data).then(() => {
         hideBackupText();
-        $ioResult.textContent = '已在 App 内复制 ' + records.length + ' 条记录到剪贴板，粘贴保存即可';
+        $ioResult.textContent = '已在 App 内复制备份（' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '）';
         $ioResult.style.color = '#4a9e7b';
       }).catch(() => {
         showBackupText(data);
@@ -2080,7 +2208,7 @@
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 3000);
-      $ioResult.textContent = '已导出 ' + records.length + ' 条记录';
+      $ioResult.textContent = '已导出 ' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '');
       $ioResult.style.color = '#4a9e7b';
     } catch (e) {
       copyTextToClipboard(data).then(() => {
@@ -2095,15 +2223,15 @@
   }
 
   function handleCopyBackup() {
-    if (records.length === 0) {
-      $ioResult.textContent = '当前没有记录可复制';
+    if (records.length === 0 && categories.length === 0 && themes.length === 0) {
+      $ioResult.textContent = '当前没有数据可复制';
       $ioResult.style.color = '#be6e6e';
       return;
     }
-    const data = JSON.stringify(records, null, 2);
+    const data = JSON.stringify(buildBackup(), null, 2);
     copyTextToClipboard(data).then(() => {
       hideBackupText();
-      $ioResult.textContent = '已复制 ' + records.length + ' 条记录到剪贴板';
+      $ioResult.textContent = '已复制备份（' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '）';
       $ioResult.style.color = '#4a9e7b';
     }).catch(() => {
       showBackupText(data);
@@ -2161,9 +2289,12 @@
     gistSaveSettings();
     const token = (settings.gistToken || '').trim();
     if (!token) { setGistResult('请先填入 GitHub Token', false); return; }
-    if (records.length === 0) { setGistResult('当前没有记录可备份', false); return; }
+    if (records.length === 0 && categories.length === 0 && themes.length === 0) {
+      setGistResult('当前没有数据可备份', false);
+      return;
+    }
 
-    const content = JSON.stringify(records, null, 2);
+    const content = JSON.stringify(buildBackup(), null, 2);
     setGistResult('正在上传…', null);
 
     const files = {};
@@ -2180,7 +2311,7 @@
       const idInput = document.getElementById('gist-id');
       if (idInput) idInput.value = gist.id;
       updateGistHint();
-      setGistResult('上传成功：' + records.length + ' 条记录\nGist ID：' + gist.id + '\n（换设备时把它填到上面即可恢复）', true);
+      setGistResult('上传成功：' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '\nGist ID：' + gist.id + '\n（换设备时把它填到上面即可恢复）', true);
     }).catch((e) => {
       setGistResult('上传失败：' + e.message, false);
     });
@@ -2205,42 +2336,17 @@
         }
       }
       if (!content) throw new Error('Gist 里没找到备份内容');
-      let data;
-      try { data = JSON.parse(content); } catch (err) { throw new Error('备份内容不是有效 JSON'); }
-      if (!Array.isArray(data)) throw new Error('备份格式不对');
+      let raw;
+      try { raw = JSON.parse(content); } catch (err) { throw new Error('备份内容不是有效 JSON'); }
+      const bk = extractBackup(raw);
+      if (!bk) throw new Error('备份格式不对');
 
-      let added = 0, skipped = 0;
-      const seen = new Set(records.map(r => (r.title || '') + '|' + (r.author || '')));
-      for (let i = 0; i < data.length; i++) {
-        const item = data[i];
-        if (!item || !item.title) { skipped++; continue; }
-        const key = (item.title || '') + '|' + (item.author || '');
-        if (seen.has(key)) { skipped++; continue; }
-        seen.add(key);
-        records.push({
-          id: item.id || makeId(),
-          title: item.title,
-          author: item.author || '',
-          genre: item.genre || '',
-          category: item.category || '',
-          status: item.status || 'finished',
-          rating: item.rating || 0,
-          wishDate: item.wishDate || '',
-          startDate: item.startDate || '',
-          startTime: item.startTime || '',
-          endDate: item.endDate || '',
-          endTime: item.endTime || '',
-          readingHours: item.readingHours ?? null,
-          wordCount: item.wordCount ?? null,
-          notes: item.notes || '',
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: item.updatedAt || new Date().toISOString(),
-        });
-        added++;
-      }
-      save();
+      const res = applyBackup(bk);
+      renderFilterRow();
+      renderCategories();
+      renderThemes();
       render();
-      setGistResult('恢复完成：新增 ' + added + ' 条，跳过 ' + skipped + ' 条（重复）', true);
+      setGistResult('恢复完成：' + summarizeBackup(res).replace(/^✓ /, ''), true);
     }).catch((e) => {
       setGistResult('恢复失败：' + e.message, false);
     });
@@ -2250,39 +2356,15 @@
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = JSON.parse(e.target.result);
-        if (!Array.isArray(data)) throw new Error('格式不对');
-        let added = 0;
-        const seen = new Set(records.map(r => (r.title || '') + '|' + (r.author || '')));
-        for (const item of data) {
-          if (!item || !item.title) continue;
-          const key = (item.title || '') + '|' + (item.author || '');
-          if (seen.has(key)) continue;
-          seen.add(key);
-          records.push({
-            id: item.id || makeId(),
-            title: item.title,
-            author: item.author || '',
-            genre: item.genre || '',
-            category: item.category || '',
-            status: item.status || 'finished',
-            rating: item.rating || 0,
-            wishDate: item.wishDate || '',
-            startDate: item.startDate || '',
-            startTime: item.startTime || '',
-            endDate: item.endDate || '',
-            endTime: item.endTime || '',
-            readingHours: item.readingHours ?? null,
-            wordCount: item.wordCount ?? null,
-            notes: item.notes || '',
-            createdAt: item.createdAt || new Date().toISOString(),
-            updatedAt: item.updatedAt || new Date().toISOString(),
-          });
-          added++;
-        }
-        save();
+        const raw = JSON.parse(e.target.result);
+        const bk = extractBackup(raw);
+        if (!bk) throw new Error('格式不对');
+        const res = applyBackup(bk);
+        renderFilterRow();
+        renderCategories();
+        renderThemes();
         render();
-        $ioResult.textContent = `已从备份导入 ${added} 条记录`;
+        $ioResult.textContent = summarizeBackup(res);
         $ioResult.style.color = '#4a9e7b';
       } catch (err) {
         $ioResult.textContent = '文件解析失败：不是有效的备份文件';
