@@ -526,6 +526,29 @@
   .field .hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+  /* 密码框加眼睛按钮 */
+  .input-with-eye { position: relative; }
+  .input-with-eye input { padding-right: 46px; }
+  .eye-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s, color .15s;
+  }
+  .eye-btn:active { background: #eceff2; }
+  .eye-btn.on { color: var(--accent); }
+
   .category-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .category-chips .cchip {
     height: 34px;
@@ -1095,7 +1118,13 @@
       <div class="section-title">云端备份（GitHub）</div>
       <div class="field">
         <label>访问令牌 Token（需 gist 权限）</label>
-        <input id="gist-token" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+        <div class="input-with-eye">
+          <input id="gist-token" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+          <button type="button" class="eye-btn" id="btn-toggle-token" title="显示 / 隐藏">
+            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
         <div class="hint">只保存在本机浏览器里，不会上传到别处。生成方式：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → 勾选 gist</div>
       </div>
       <div class="field">
@@ -2552,6 +2581,20 @@
   const $gistId = document.getElementById('gist-id');
   if ($gistToken) $gistToken.addEventListener('change', gistSaveSettings);
   if ($gistId) $gistId.addEventListener('change', gistSaveSettings);
+
+  // 密钥加个小眼睛，点一下切换显示 / 隐藏
+  const $btnToggleToken = document.getElementById('btn-toggle-token');
+  if ($btnToggleToken && $gistToken) {
+    $btnToggleToken.addEventListener('click', () => {
+      const show = $gistToken.type === 'password';
+      $gistToken.type = show ? 'text' : 'password';
+      const openIcon = $btnToggleToken.querySelector('.eye-open');
+      const closedIcon = $btnToggleToken.querySelector('.eye-closed');
+      if (openIcon) openIcon.style.display = show ? 'none' : 'block';
+      if (closedIcon) closedIcon.style.display = show ? 'block' : 'none';
+      $btnToggleToken.classList.toggle('on', show);
+    });
+  }
 
   if ($sortBtn) {
     $sortBtn.addEventListener('click', (e) => {
