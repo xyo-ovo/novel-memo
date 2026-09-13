@@ -1606,11 +1606,13 @@
     dropped:  { text: '弃读', cls: 'badge-dropped' },
   };
 
-  // 排序用的时间键：优先「读完」，其次「开始」，都取日期+时间
+  // 排序用的时间键：读完 → 开始 → 想读 → 创建时间
+  // 注意用 createdAt 而不是 updatedAt，否则编辑一下就会跳到最前面
   function readSortKey(r) {
     if (r.endDate) return r.endDate + ' ' + (r.endTime || '00:00');
     if (r.startDate) return r.startDate + ' ' + (r.startTime || '00:00');
-    return r.updatedAt || r.createdAt || '';
+    if (r.wishDate) return r.wishDate + ' 00:00';
+    return r.createdAt || '';
   }
 
   // 新的排前面
