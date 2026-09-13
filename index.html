@@ -1115,9 +1115,9 @@
       <textarea id="backup-text" readonly></textarea>
       <input type="file" id="file-input" accept=".json,application/json" style="display:none">
 
-      <div class="section-title">云端备份（GitHub）</div>
+      <div class="section-title">云端备份（GitHub 仓库）</div>
       <div class="field">
-        <label>访问令牌 Token（需 gist 权限）</label>
+        <label>访问令牌 Token（需 repo 权限）</label>
         <div class="input-with-eye">
           <input id="gist-token" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
           <button type="button" class="eye-btn" id="btn-toggle-token" title="显示 / 隐藏">
@@ -1125,11 +1125,11 @@
             <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
           </button>
         </div>
-        <div class="hint">只保存在本机浏览器里，不会上传到别处。生成方式：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → 勾选 gist</div>
+        <div class="hint">只保存在本机浏览器里。生成方式：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → 勾选 <b>repo</b>（要能读写仓库文件）</div>
       </div>
       <div class="field">
-        <label>Gist ID（换设备时填入，平时自动填）</label>
-        <input id="gist-id" type="text" placeholder="上传一次后自动生成" autocomplete="off">
+        <label>备份仓库名</label>
+        <input id="gist-id" type="text" placeholder="novel-memo-backup" autocomplete="off">
         <div class="hint" id="gist-id-hint"></div>
       </div>
       <div class="io-row">
@@ -2292,10 +2292,12 @@
     });
   }
 
-  const GIST_FILENAME = 'novel-memo-backup.json';
-  const GIST_DESC = '小说备忘录备份（novel-memo）';
+  // 云端备份：改用 GitHub 仓库（方便助手直接读，不需要 Gist）
+  const BACKUP_REPO_OWNER = 'xyo-ovo';
+  const BACKUP_REPO_DEFAULT = 'novel-memo-backup';
+  const BACKUP_FILE_PATH = 'backup.json';
 
-  function gistRequest(method, path, token, body) {
+  function ghRequest(method, path, token, body) {
     const headers = { 'Accept': 'application/vnd.github+json' };
     if (token) headers['Authorization'] = 'Bearer ' + token;
     if (body) headers['Content-Type'] = 'application/json';
@@ -2307,7 +2309,9 @@
       if (!res.ok) {
         return res.json().catch(() => ({})).then((j) => {
           const msg = (j && j.message) ? j.message : ('HTTP ' + res.status);
-          throw new Error(msg + '（' + res.status + '）');
+          const err = new Error(msg + '（' + res.status + '）');
+          err.status = res.status;
+          throw err;
         });
       }
       return res.json();
@@ -2324,8 +2328,8 @@
   function updateGistHint() {
     const el = document.getElementById('gist-id-hint');
     if (!el) return;
-    const id = (settings.gistId || '').trim();
-    el.textContent = id ? ('已绑定 Gist：' + id) : '还没有上传过；上传成功后这里会显示 Gist ID';
+    const repo = (settings.gistId || '').trim() || BACKUP_REPO_DEFAULT;
+    el.textContent = '备份会存到 ' + BACKUP_REPO_OWNER + '/' + repo + ' 里的 ' + BACKUP_FILE_PATH;
   }
 
   function gistSaveSettings() {
@@ -2345,63 +2349,81 @@
       setGistResult('当前没有数据可备份', false);
       return;
     }
-
+    const repo = (settings.gistId || '').trim() || BACKUP_REPO_DEFAULT;
     const content = JSON.stringify(buildBackup(), null, 2);
+    let encoded;
+    try {
+      encoded = btoa(unescape(encodeURIComponent(content)));
+    } catch (e) {
+      setGistResult('备份内容编码失败', false);
+      return;
+    }
     setGistResult('正在上传…', null);
 
-    const files = {};
-    files[GIST_FILENAME] = { content: content };
+    const apiPath = '/repos/' + BACKUP_REPO_OWNER + '/' + repo + '/contents/' + BACKUP_FILE_PATH;
 
-    const existingId = (settings.gistId || '').trim();
-    const p = existingId
-      ? gistRequest('PATCH', '/gists/' + existingId, token, { files: files })
-      : gistRequest('POST', '/gists', token, { description: GIST_DESC, public: false, files: files });
-
-    p.then((gist) => {
-      settings.gistId = gist.id;
-      saveSettings();
-      const idInput = document.getElementById('gist-id');
-      if (idInput) idInput.value = gist.id;
-      updateGistHint();
-      setGistResult('上传成功：' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '\nGist ID：' + gist.id + '\n（换设备时把它填到上面即可恢复）', true);
-    }).catch((e) => {
-      setGistResult('上传失败：' + e.message, false);
-    });
+    // 先看看文件在不在（在的话要带 sha 才能更新）
+    ghRequest('GET', apiPath, token)
+      .then((file) => ghRequest('PUT', apiPath, token, {
+        message: '备份 ' + new Date().toISOString(),
+        content: encoded,
+        sha: file.sha
+      }))
+      .catch((err) => {
+        // 文件不存在（404）→ 直接创建
+        if (err && err.status === 404) {
+          return ghRequest('PUT', apiPath, token, {
+            message: '备份 ' + new Date().toISOString(),
+            content: encoded
+          });
+        }
+        throw err;
+      })
+      .then(() => {
+        settings.gistId = repo;
+        saveSettings();
+        updateGistHint();
+        setGistResult('上传成功：' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '\n仓库：' + BACKUP_REPO_OWNER + '/' + repo, true);
+      })
+      .catch((e) => {
+        setGistResult('上传失败：' + e.message, false);
+      });
   }
 
   function handleGistDownload() {
     gistSaveSettings();
     const token = (settings.gistToken || '').trim();
-    const id = (settings.gistId || '').trim();
-    if (!id) { setGistResult('请先填入 Gist ID（或先上传一次）', false); return; }
+    if (!token) { setGistResult('请先填入 GitHub Token', false); return; }
+    const repo = (settings.gistId || '').trim() || BACKUP_REPO_DEFAULT;
     setGistResult('正在下载…', null);
 
-    gistRequest('GET', '/gists/' + id, token).then((gist) => {
-      const files = gist.files || {};
-      let content = '';
-      if (files[GIST_FILENAME] && files[GIST_FILENAME].content) {
-        content = files[GIST_FILENAME].content;
-      } else {
-        const keys = Object.keys(files);
-        for (let i = 0; i < keys.length; i++) {
-          if (files[keys[i]] && files[keys[i]].content) { content = files[keys[i]].content; break; }
-        }
-      }
-      if (!content) throw new Error('Gist 里没找到备份内容');
-      let raw;
-      try { raw = JSON.parse(content); } catch (err) { throw new Error('备份内容不是有效 JSON'); }
-      const bk = extractBackup(raw);
-      if (!bk) throw new Error('备份格式不对');
+    const apiPath = '/repos/' + BACKUP_REPO_OWNER + '/' + repo + '/contents/' + BACKUP_FILE_PATH;
 
-      const res = applyBackup(bk);
-      renderFilterRow();
-      renderCategories();
-      renderThemes();
-      render();
-      setGistResult('恢复完成：' + summarizeBackup(res).replace(/^✓ /, ''), true);
-    }).catch((e) => {
-      setGistResult('恢复失败：' + e.message, false);
-    });
+    ghRequest('GET', apiPath, token)
+      .then((file) => {
+        if (!file || !file.content) throw new Error('仓库里没找到备份文件');
+        const b64 = String(file.content).replace(/\n/g, '');
+        let content;
+        try {
+          content = decodeURIComponent(escape(atob(b64)));
+        } catch (e) {
+          throw new Error('备份内容解码失败');
+        }
+        let raw;
+        try { raw = JSON.parse(content); } catch (err) { throw new Error('备份内容不是有效 JSON'); }
+        const bk = extractBackup(raw);
+        if (!bk) throw new Error('备份格式不对');
+
+        const res = applyBackup(bk);
+        renderFilterRow();
+        renderCategories();
+        renderThemes();
+        render();
+        setGistResult('恢复完成：' + summarizeBackup(res).replace(/^✓ /, ''), true);
+      })
+      .catch((e) => {
+        setGistResult('恢复失败：' + e.message, false);
+      });
   }
 
   function handleImportFile(file) {
