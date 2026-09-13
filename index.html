@@ -1141,6 +1141,9 @@
 
   // ---------- 备份包：书 + 分类 + 主题 + 设置 ----------
   function buildBackup() {
+    // 导出前先把「genre 里含分类名、但 category 为空」的老书迁移到 category 字段，
+    // 否则备份出去的 records 里分类字段是空的，恢复后书就归不进分类了
+    migrateLegacyCategories();
     return {
       app: 'novel-memo',
       version: 2,
@@ -1255,6 +1258,10 @@
       res.settingsApplied = true;
     }
 
+    // ⑤ 恢复的书里若「genre 含分类名、但 category 为空」，也迁移一次，
+    //    这样从旧备份恢复也能自动把书归进对应分类
+    migrateLegacyCategories();
+
     return res;
   }
 
@@ -1351,22 +1358,27 @@
   function splitTags(s) {
     return [...new Set(String(s || '').split(/[,，、/;；\n]+/).map(t => t.trim()).filter(Boolean))];
   }
+  // 把老数据里「类型/标签写着分类名」的书迁移到独立的 category 字段。
+  // 注意：不能用 typeof r.category === 'undefined' 判断 —— load() 里已经把
+  // 所有老记录补成 category: ''，那种判断永远不成立，迁移就永远不会触发。
   function migrateLegacyCategories() {
-    if (!categories.length) return;
+    if (!categories.length) return false;
     let changed = false;
     records.forEach(r => {
-      if (typeof r.category === 'undefined') {
-        r.category = '';
+      if (r.catMigrated) return;
+      if (!r.category) {
         const tags = splitTags(r.genre);
         const hit = tags.filter(t => categories.indexOf(t) >= 0);
         if (hit.length) {
           r.category = hit[0];
           r.genre = tags.filter(t => t !== hit[0]).join('、');
         }
-        changed = true;
       }
+      r.catMigrated = true;
+      changed = true;
     });
     if (changed) save();
+    return changed;
   }
 
   const COLOR_THEMES = {
