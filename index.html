@@ -1132,6 +1132,14 @@
         <input id="gist-id" type="text" placeholder="novel-memo-backup" autocomplete="off">
         <div class="hint" id="gist-id-hint"></div>
       </div>
+      <div class="field">
+        <label>恢复方式</label>
+        <div class="status-picker" id="restore-mode-picker">
+          <button type="button" data-mode="merge">只新增</button>
+          <button type="button" data-mode="overwrite">全部覆盖</button>
+        </div>
+        <div class="hint">「只新增」：本地已有的书完全不动，只把备份里多出来的加进来<br>「全部覆盖」：用备份完全替换本地所有数据（书、分类、主题、设置全按备份来，旧的会丢掉）</div>
+      </div>
       <div class="io-row">
         <button id="btn-gist-upload" class="primary">上传到 GitHub</button>
         <button id="btn-gist-download">从 GitHub 恢复</button>
@@ -1152,7 +1160,7 @@
   let records = [];
   let themes = [];
   let categories = [];
-  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '' };
+  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' };
   let currentFilter = 'all';
   let currentCategory = '';
   let searchQuery = '';
@@ -1170,13 +1178,14 @@
 
   // ---------- 备份包：书 + 分类 + 主题 + 设置 ----------
   // 全量备份：每本书的所有字段原样保留、所有分类、所有主题（含封面）、所有设置
-  // 只排除 gistToken / gistId 这类本机密钥
+  // 只排除 gistToken / gistId / restoreMode 这类本机设置
   function buildBackup() {
     // 导出前把「标签里含分类名、但还没分类」的书归入分类
     migrateLegacyCategories();
     const safeSettings = Object.assign({}, settings);
     delete safeSettings.gistToken;
     delete safeSettings.gistId;
+    delete safeSettings.restoreMode;
     return {
       app: 'novel-memo',
       version: 3,
@@ -1204,112 +1213,133 @@
     return null;
   }
 
-  function applyBackup(bk) {
-    const res = { added: 0, skipped: 0, merged: 0, catAdded: 0, themeAdded: 0, settingsApplied: false };
+  // 把备份里的一本书补上默认字段（用于新增 / 覆盖）
+  function normalizeRecord(item) {
+    const rec = Object.assign({}, item);
+    rec.id = item.id || makeId();
+    rec.title = item.title;
+    rec.author = item.author || '';
+    rec.genre = item.genre || '';
+    rec.category = item.category || '';
+    rec.status = item.status || 'finished';
+    rec.rating = item.rating || 0;
+    if (typeof rec.wishDate === 'undefined') rec.wishDate = '';
+    if (typeof rec.startDate === 'undefined') rec.startDate = '';
+    if (typeof rec.startTime === 'undefined') rec.startTime = '';
+    if (typeof rec.endDate === 'undefined') rec.endDate = '';
+    if (typeof rec.endTime === 'undefined') rec.endTime = '';
+    if (typeof rec.readingHours === 'undefined') rec.readingHours = null;
+    if (typeof rec.wordCount === 'undefined') rec.wordCount = null;
+    if (typeof rec.notes === 'undefined') rec.notes = '';
+    if (!rec.createdAt) rec.createdAt = new Date().toISOString();
+    if (!rec.updatedAt) rec.updatedAt = new Date().toISOString();
+    return rec;
+  }
 
-    // ① 书：按「书名|作者」合并
-    //    - 本地没有这本书：整本加进来（原样保留所有字段）
-    //    - 本地已经有：只补本地空着的分类和标签，不覆盖本地已有的内容
-    const byKey = new Map();
-    records.forEach(r => byKey.set((r.title || '') + '|' + (r.author || ''), r));
-    bk.records.forEach(item => {
-      if (!item || !item.title) { res.skipped++; return; }
-      const key = (item.title || '') + '|' + (item.author || '');
-      const existing = byKey.get(key);
-      if (existing) {
-        // 已存在：只补本地空着的分类 / 标签，不动本地已有的
-        if (!existing.category && item.category) { existing.category = item.category; res.merged++; }
-        if (!existing.genre && item.genre) { existing.genre = item.genre; res.merged++; }
-        res.skipped++;
-        return;
+  function applyBackup(bk, mode) {
+    mode = mode || 'merge';
+    const res = { added: 0, skipped: 0, merged: 0, replaced: 0, catAdded: 0, themeAdded: 0, settingsApplied: false };
+
+    if (mode === 'overwrite') {
+      // 全部覆盖：本地所有数据用备份替换
+      const newRecords = [];
+      bk.records.forEach(item => {
+        if (!item || !item.title) { res.skipped++; return; }
+        newRecords.push(normalizeRecord(item));
+      });
+      res.replaced = records.length;
+      records = newRecords;
+      res.added = newRecords.length;
+      save();
+
+      if (bk.categories) {
+        categories = bk.categories.filter(c => typeof c === 'string' && c.trim()).map(c => c.trim());
+        res.catAdded = categories.length;
+        saveCategories();
       }
-      // 先把备份里这本书的字段整份拿过来（以后加新字段也不会丢），再补默认值
-      const rec = Object.assign({}, item);
-      rec.id = item.id || makeId();
-      rec.title = item.title;
-      rec.author = item.author || '';
-      rec.genre = item.genre || '';
-      rec.category = item.category || '';
-      rec.status = item.status || 'finished';
-      rec.rating = item.rating || 0;
-      if (typeof rec.wishDate === 'undefined') rec.wishDate = '';
-      if (typeof rec.startDate === 'undefined') rec.startDate = '';
-      if (typeof rec.startTime === 'undefined') rec.startTime = '';
-      if (typeof rec.endDate === 'undefined') rec.endDate = '';
-      if (typeof rec.endTime === 'undefined') rec.endTime = '';
-      if (typeof rec.readingHours === 'undefined') rec.readingHours = null;
-      if (typeof rec.wordCount === 'undefined') rec.wordCount = null;
-      if (typeof rec.notes === 'undefined') rec.notes = '';
-      if (!rec.createdAt) rec.createdAt = new Date().toISOString();
-      if (!rec.updatedAt) rec.updatedAt = new Date().toISOString();
-      records.push(rec);
-      byKey.set(key, rec);
-      res.added++;
-    });
-    if (res.added || res.merged) save();
-
-    // ② 分类：合并去重
-    if (bk.categories) {
-      bk.categories.forEach(c => {
-        if (typeof c === 'string' && c.trim() && categories.indexOf(c.trim()) < 0) {
-          categories.push(c.trim());
-          res.catAdded++;
-        }
+      if (bk.themes) {
+        themes = bk.themes.slice();
+        res.themeAdded = themes.length;
+        saveThemes();
+      }
+      if (bk.settings) {
+        Object.keys(bk.settings).forEach(k => {
+          if (k === 'gistToken' || k === 'gistId' || k === 'restoreMode') return;
+          settings[k] = bk.settings[k];
+        });
+        saveSettings();
+        applyRestoredSettingsUI();
+        res.settingsApplied = true;
+      }
+    } else {
+      // 只新增：本地已有的书不动，只加备份里多出来的
+      const seen = new Set(records.map(r => (r.title || '') + '|' + (r.author || '')));
+      bk.records.forEach(item => {
+        if (!item || !item.title) { res.skipped++; return; }
+        const key = (item.title || '') + '|' + (item.author || '');
+        if (seen.has(key)) { res.skipped++; return; }
+        seen.add(key);
+        records.push(normalizeRecord(item));
+        res.added++;
       });
-      if (res.catAdded) saveCategories();
+      if (res.added) save();
+
+      if (bk.categories) {
+        bk.categories.forEach(c => {
+          if (typeof c === 'string' && c.trim() && categories.indexOf(c.trim()) < 0) {
+            categories.push(c.trim());
+            res.catAdded++;
+          }
+        });
+        if (res.catAdded) saveCategories();
+      }
+      if (bk.themes) {
+        const ids = new Set(themes.map(t => t.id));
+        bk.themes.forEach(t => {
+          if (t && t.id && !ids.has(t.id)) {
+            themes.push(t);
+            ids.add(t.id);
+            res.themeAdded++;
+          }
+        });
+        if (res.themeAdded) saveThemes();
+      }
     }
 
-    // ③ 主题：按 id 合并去重
-    if (bk.themes) {
-      const ids = new Set(themes.map(t => t.id));
-      bk.themes.forEach(t => {
-        if (t && t.id && !ids.has(t.id)) {
-          themes.push(t);
-          ids.add(t.id);
-          res.themeAdded++;
-        }
-      });
-      if (res.themeAdded) saveThemes();
-    }
-
-    // ④ 设置：整包合并（不动 token / Gist ID 这类本机密钥）
-    if (bk.settings) {
-      Object.keys(bk.settings).forEach(k => {
-        if (k === 'gistToken' || k === 'gistId') return;
-        settings[k] = bk.settings[k];
-      });
-      saveSettings();
-      document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
-      document.documentElement.style.setProperty('--cover-gap', settings.coverGap + 'px');
-      document.documentElement.style.setProperty('--cover-radius', settings.coverRadius + 'px');
-      const wEl = document.getElementById('set-cover-width');
-      const gEl = document.getElementById('set-cover-gap');
-      const rEl = document.getElementById('set-cover-radius');
-      if (wEl) wEl.value = settings.coverWidth;
-      if (gEl) gEl.value = settings.coverGap;
-      if (rEl) rEl.value = settings.coverRadius;
-      const dEl = document.getElementById('set-duration-format');
-      if (dEl) dEl.value = settings.durationFormat;
-      applyColorTheme(settings.colorTheme);
-      applyFontScale();
-      res.settingsApplied = true;
-    }
-
-    // ⑤ 恢复完再跑一次迁移：新导入的书如果 genre 里带分类名、category 还是空，
-    //    就自动归进对应分类（旧备份恢复也能救回来）
+    // 恢复完再跑一次迁移：新导入的书如果 genre 里带分类名、category 还是空，
+    // 就自动归进对应分类
     migrateLegacyCategories();
 
     return res;
   }
 
   function summarizeBackup(res) {
-    const bits = ['导入 ' + res.added + ' 条记录'];
+    const bits = [];
+    if (res.replaced) bits.push('覆盖旧数据 ' + res.replaced + ' 条');
+    bits.push('导入 ' + res.added + ' 条记录');
     if (res.merged) bits.push('补全 ' + res.merged + ' 处分类/标签');
     if (res.catAdded) bits.push(res.catAdded + ' 个分类');
     if (res.themeAdded) bits.push(res.themeAdded + ' 个主题');
     if (res.settingsApplied) bits.push('设置已更新');
     if (res.skipped) bits.push('跳过 ' + res.skipped + ' 条重复');
     return '✓ ' + bits.join('，');
+  }
+
+  function applyRestoredSettingsUI() {
+    document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
+    document.documentElement.style.setProperty('--cover-gap', settings.coverGap + 'px');
+    document.documentElement.style.setProperty('--cover-radius', settings.coverRadius + 'px');
+    const wEl = document.getElementById('set-cover-width');
+    const gEl = document.getElementById('set-cover-gap');
+    const rEl = document.getElementById('set-cover-radius');
+    if (wEl) wEl.value = settings.coverWidth;
+    if (gEl) gEl.value = settings.coverGap;
+    if (rEl) rEl.value = settings.coverRadius;
+    const dEl = document.getElementById('set-duration-format');
+    if (dEl) dEl.value = settings.durationFormat;
+    applyColorTheme(settings.colorTheme);
+    applyFontScale();
+    renderRestoreModePicker();
   }
 
   function isLikelyWebView() {
@@ -1398,8 +1428,7 @@
   }
   // 把「类型/标签里写着分类名」的书归入对应分类。
   // 关键点：
-  //  1. 每次启动都会跑，只处理 category 还是空的书；已经有分类的不动，
-  //     所以以后新建了分类，老书也能自动归进去
+  //  1. 每次启动都会跑，只处理 category 还是空的书；已经有分类的不动
   //  2. 只读 genre，不删标签内容，标签原样留在卡片上
   function migrateLegacyCategories() {
     if (!categories.length) return false;
@@ -1458,7 +1487,7 @@
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
       if (s && typeof s === 'object') {
-        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '' }, s);
+        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' }, s);
       }
     } catch (e) {}
     document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
@@ -1476,6 +1505,7 @@
     applyColorTheme(settings.colorTheme);
     applyFontScale();
     updateGistHint();
+    renderRestoreModePicker();
   }
   function saveSettings() {
     try {
@@ -1671,6 +1701,15 @@
   function closeSortMenu() {
     if ($sortMenu) $sortMenu.classList.remove('show');
     if ($sortBtn) $sortBtn.classList.remove('active');
+  }
+
+  function renderRestoreModePicker() {
+    const el = document.getElementById('restore-mode-picker');
+    if (!el) return;
+    const mode = settings.restoreMode || 'merge';
+    el.querySelectorAll('button[data-mode]').forEach(btn => {
+      btn.classList.toggle('on-reading', btn.dataset.mode === mode);
+    });
   }
 
   // 记住每个筛选条件下的滚动位置，切回来时恢复
@@ -2395,7 +2434,8 @@
     const token = (settings.gistToken || '').trim();
     if (!token) { setGistResult('请先填入 GitHub Token', false); return; }
     const repo = (settings.gistId || '').trim() || BACKUP_REPO_DEFAULT;
-    setGistResult('正在下载…', null);
+    const mode = settings.restoreMode || 'merge';
+    setGistResult('正在下载…（' + (mode === 'overwrite' ? '全部覆盖' : '只新增') + '）', null);
 
     const apiPath = '/repos/' + BACKUP_REPO_OWNER + '/' + repo + '/contents/' + BACKUP_FILE_PATH;
 
@@ -2414,7 +2454,7 @@
         const bk = extractBackup(raw);
         if (!bk) throw new Error('备份格式不对');
 
-        const res = applyBackup(bk);
+        const res = applyBackup(bk, mode);
         renderFilterRow();
         renderCategories();
         renderThemes();
@@ -2433,7 +2473,7 @@
         const raw = JSON.parse(e.target.result);
         const bk = extractBackup(raw);
         if (!bk) throw new Error('格式不对');
-        const res = applyBackup(bk);
+        const res = applyBackup(bk, settings.restoreMode || 'merge');
         renderFilterRow();
         renderCategories();
         renderThemes();
@@ -2589,6 +2629,7 @@
     renderThemes();
     renderCategories();
     updateGistHint();
+    renderRestoreModePicker();
     $overlayIo.classList.add('show');
   });
 
@@ -2603,6 +2644,18 @@
   const $gistId = document.getElementById('gist-id');
   if ($gistToken) $gistToken.addEventListener('change', gistSaveSettings);
   if ($gistId) $gistId.addEventListener('change', gistSaveSettings);
+
+  // 恢复方式选择：只新增 / 全部覆盖
+  const $restoreModePicker = document.getElementById('restore-mode-picker');
+  if ($restoreModePicker) {
+    $restoreModePicker.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-mode]');
+      if (!btn) return;
+      settings.restoreMode = btn.dataset.mode;
+      saveSettings();
+      renderRestoreModePicker();
+    });
+  }
 
   // 密钥加个小眼睛，点一下切换显示 / 隐藏
   const $btnToggleToken = document.getElementById('btn-toggle-token');
@@ -3024,6 +3077,7 @@
   migrateLegacyCategories();
   renderFilterRow();
   renderSortMenu();
+  renderRestoreModePicker();
   render();
 
   if (document.readyState === 'complete') {
