@@ -1176,15 +1176,24 @@
   }
 
   function applyBackup(bk) {
-    const res = { added: 0, skipped: 0, catAdded: 0, themeAdded: 0, settingsApplied: false };
+    const res = { added: 0, skipped: 0, merged: 0, catAdded: 0, themeAdded: 0, settingsApplied: false };
 
-    // ① 书：按「书名|作者」去重合并；原样保留每本书的所有字段，不丢信息
-    const seen = new Set(records.map(r => (r.title || '') + '|' + (r.author || '')));
+    // ① 书：按「书名|作者」合并
+    //    - 本地没有这本书：整本加进来（原样保留所有字段）
+    //    - 本地已经有：只补本地空着的分类和标签，不覆盖本地已有的内容
+    const byKey = new Map();
+    records.forEach(r => byKey.set((r.title || '') + '|' + (r.author || ''), r));
     bk.records.forEach(item => {
       if (!item || !item.title) { res.skipped++; return; }
       const key = (item.title || '') + '|' + (item.author || '');
-      if (seen.has(key)) { res.skipped++; return; }
-      seen.add(key);
+      const existing = byKey.get(key);
+      if (existing) {
+        // 已存在：只补本地空着的分类 / 标签，不动本地已有的
+        if (!existing.category && item.category) { existing.category = item.category; res.merged++; }
+        if (!existing.genre && item.genre) { existing.genre = item.genre; res.merged++; }
+        res.skipped++;
+        return;
+      }
       // 先把备份里这本书的字段整份拿过来（以后加新字段也不会丢），再补默认值
       const rec = Object.assign({}, item);
       rec.id = item.id || makeId();
@@ -1205,9 +1214,10 @@
       if (!rec.createdAt) rec.createdAt = new Date().toISOString();
       if (!rec.updatedAt) rec.updatedAt = new Date().toISOString();
       records.push(rec);
+      byKey.set(key, rec);
       res.added++;
     });
-    if (res.added) save();
+    if (res.added || res.merged) save();
 
     // ② 分类：合并去重
     if (bk.categories) {
@@ -1265,6 +1275,7 @@
 
   function summarizeBackup(res) {
     const bits = ['导入 ' + res.added + ' 条记录'];
+    if (res.merged) bits.push('补全 ' + res.merged + ' 处分类/标签');
     if (res.catAdded) bits.push(res.catAdded + ' 个分类');
     if (res.themeAdded) bits.push(res.themeAdded + ' 个主题');
     if (res.settingsApplied) bits.push('设置已更新');
