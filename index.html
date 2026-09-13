@@ -1811,12 +1811,19 @@
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
              ${esc(durText)}
            </span>` : '';
-      const waitText = formatWait(r.wishDate, r.startDate);
-      const waitPart = waitText
-        ? `<span class="meta-item wait">
-             ${WAIT_SVG}
-             等了 ${esc(waitText)}
-           </span>` : '';
+      let waitPart = '';
+      if (r.wishDate) {
+        const waitText = formatWait(r.wishDate, r.startDate);
+        waitPart = waitText
+          ? `<span class="meta-item wait">
+               ${WAIT_SVG}
+               ${esc(r.wishDate)} 想读 · 等了 ${esc(waitText)}
+             </span>`
+          : `<span class="meta-item wait">
+               ${WAIT_SVG}
+               ${esc(r.wishDate)} 想读
+             </span>`;
+      }
       const endDateStr = formatEndDate(r);
       const endPart = endDateStr
         ? `<span class="meta-item">
