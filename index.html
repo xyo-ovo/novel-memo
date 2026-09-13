@@ -1080,11 +1080,6 @@
       </div>
 
       <div class="section-title">批量导入 / 本地备份</div>
-      <div class="field">
-        <label>备份文件名（可选）</label>
-        <input id="backup-filename" type="text" placeholder="留空则用：小说备忘录_日期_条数本" autocomplete="off">
-        <div class="hint">导出或下载时会用它当文件名，方便区分不同备份。现在共有 <span id="backup-count-hint">0</span> 条记录。</div>
-      </div>
       <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
       <div class="io-row">
         <button id="btn-import-text" class="primary">解析并导入</button>
@@ -1380,22 +1375,6 @@
     });
     if (changed) save();
     return changed;
-  }
-
-  // 每本「没有分类」的书，按它 genre 里的标签，可能能匹配到哪些分类名
-  // 用于分类标签管理页展示「标签里有 X 本没归入」
-  function countUngroupedByTag() {
-    const map = {};
-    records.forEach(r => {
-      if (r.category) return;
-      const tags = splitTags(r.genre);
-      tags.forEach(t => {
-        if (categories.indexOf(t) >= 0) {
-          map[t] = (map[t] || 0) + 1;
-        }
-      });
-    });
-    return map;
   }
 
   const COLOR_THEMES = {
@@ -1893,29 +1872,16 @@
     }
   }
 
-  // 分类名和标签的匹配：精确相等，或标签里含有分类名（如「校园文」匹配「校园」）
-  function tagMatchesCategory(tag, cat) {
-    if (tag === cat) return true;
-    if (tag.length > cat.length && tag.indexOf(cat) >= 0) return true;
-    return false;
-  }
-  function recordMatchesCategory(r, cat) {
-    if (r.category === cat) return true;
-    if (r.category) return false; // 有别的分类就不算
-    const tags = splitTags(r.genre);
-    for (let i = 0; i < tags.length; i++) {
-      if (tagMatchesCategory(tags[i], cat)) return true;
-    }
-    return false;
-  }
-
   function render() {
     let shown = records;
     if (currentCategory) {
-      // 分类视图：显示这个分类下的所有书，不管什么阅读状态（想读也算）
-      // 匹配规则：category 精确相等，或 category 为空但标签里有这个分类名（含「校园文」这种）
-      shown = shown.filter(r => recordMatchesCategory(r, currentCategory));
-    } else if (currentFilter === 'all') {
+      // 兜底：就算某本书的 category 还没迁过来，只要标签里有这个分类名也算
+      shown = shown.filter(r =>
+        r.category === currentCategory ||
+        (!r.category && splitTags(r.genre).indexOf(currentCategory) >= 0)
+      );
+    }
+    if (currentFilter === 'all') {
       shown = shown.filter(r => r.status !== 'wishlist');
     } else {
       shown = shown.filter(r => r.status === currentFilter);
@@ -2094,11 +2060,6 @@
     ).join('');
   }
 
-  function updateBackupCountHint() {
-    const el = document.getElementById('backup-count-hint');
-    if (el) el.textContent = records.length;
-  }
-
   let addingCoversForThemeId = null;
 
   function handleThemeCovers(files) {
@@ -2221,41 +2182,11 @@
     }
     records = records.concat(imported);
     save();
-    migrateLegacyCategories();
     render();
-    updateBackupCountHint();
     $ioResult.textContent = `成功导入 ${imported.length} 条记录`;
     if (skipped > 0) $ioResult.textContent += `，跳过 ${skipped} 条（重复或格式不符）`;
     $ioResult.style.color = '#4a9e7b';
     $importArea.value = '';
-  }
-
-  // 根据输入框和当前条数拼一个文件名
-  function buildBackupFilename() {
-    const input = document.getElementById('backup-filename');
-    let name = (input && input.value ? input.value : '').trim();
-    if (!name) {
-      name = '小说备忘录_' + new Date().toISOString().slice(0,10) + '_' + records.length + '本';
-    }
-    // 去掉文件系统不接受的字符
-    name = name.replace(/[\\/:*?"<>|]/g, '_');
-    if (!/\.json$/i.test(name)) name += '.json';
-    return name;
-  }
-
-  // 浏览器里优先弹系统保存对话框，让用户自己选位置和文件名
-  function saveBackupWithPicker(data, fileName) {
-    if (!window.showSaveFilePicker) return Promise.resolve(null);
-    return window.showSaveFilePicker({
-      suggestedName: fileName,
-      types: [{ description: 'JSON 备份', accept: { 'application/json': ['.json'] } }]
-    }).then((handle) => handle.createWritable())
-      .then((writable) => writable.write(data).then(() => writable.close()))
-      .then(() => true)
-      .catch((err) => {
-        if (err && err.name === 'AbortError') return false;
-        return null;
-      });
   }
 
   function handleExport() {
@@ -2265,13 +2196,11 @@
       return;
     }
     const data = JSON.stringify(buildBackup(), null, 2);
-    const fileName = buildBackupFilename();
-    const summary = records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '');
 
     if (isLikelyWebView()) {
       copyTextToClipboard(data).then(() => {
         hideBackupText();
-        $ioResult.textContent = '已在 App 内复制备份（' + summary + '）';
+        $ioResult.textContent = '已在 App 内复制备份（' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '）';
         $ioResult.style.color = '#4a9e7b';
       }).catch(() => {
         showBackupText(data);
@@ -2281,42 +2210,28 @@
       return;
     }
 
-    // 先试系统保存对话框
-    saveBackupWithPicker(data, fileName).then((ok) => {
-      if (ok === true) {
-        $ioResult.textContent = '已保存：' + fileName + '（' + summary + '）';
+    try {
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '小说备忘录备份_' + new Date().toISOString().slice(0,10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      $ioResult.textContent = '已导出 ' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '');
+      $ioResult.style.color = '#4a9e7b';
+    } catch (e) {
+      copyTextToClipboard(data).then(() => {
+        $ioResult.textContent = '下载不可用，已改为复制到剪贴板';
         $ioResult.style.color = '#4a9e7b';
-        return;
-      }
-      if (ok === false) {
-        $ioResult.textContent = '已取消保存';
-        $ioResult.style.color = '#8b98a3';
-        return;
-      }
-      // 回退到普通下载
-      try {
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 3000);
-        $ioResult.textContent = '已下载：' + fileName + '（' + summary + '）';
-        $ioResult.style.color = '#4a9e7b';
-      } catch (e) {
-        copyTextToClipboard(data).then(() => {
-          $ioResult.textContent = '下载不可用，已改为复制到剪贴板';
-          $ioResult.style.color = '#4a9e7b';
-        }).catch(() => {
-          showBackupText(data);
-          $ioResult.textContent = '导出失败，请长按下方文本手动复制';
-          $ioResult.style.color = '#be6e6e';
-        });
-      }
-    });
+      }).catch(() => {
+        showBackupText(data);
+        $ioResult.textContent = '导出失败，请长按下方文本手动复制';
+        $ioResult.style.color = '#be6e6e';
+      });
+    }
   }
 
   function handleCopyBackup() {
@@ -2443,7 +2358,6 @@
       renderCategories();
       renderThemes();
       render();
-      updateBackupCountHint();
       setGistResult('恢复完成：' + summarizeBackup(res).replace(/^✓ /, ''), true);
     }).catch((e) => {
       setGistResult('恢复失败：' + e.message, false);
@@ -2462,7 +2376,6 @@
         renderCategories();
         renderThemes();
         render();
-        updateBackupCountHint();
         $ioResult.textContent = summarizeBackup(res);
         $ioResult.style.color = '#4a9e7b';
       } catch (err) {
@@ -2479,7 +2392,6 @@
     records = [];
     save();
     render();
-    updateBackupCountHint();
     $ioResult.textContent = '已清空全部记录';
     $ioResult.style.color = '#8b98a3';
   }
@@ -2593,7 +2505,6 @@
     save();
     closeEditSheet();
     render();
-    updateBackupCountHint();
   }
 
   function handleDelete(id) {
@@ -2603,7 +2514,6 @@
       records = records.filter(r => r.id !== id);
       save();
       render();
-      updateBackupCountHint();
     }
   }
 
@@ -2617,7 +2527,6 @@
     renderThemes();
     renderCategories();
     updateGistHint();
-    updateBackupCountHint();
     $overlayIo.classList.add('show');
   });
 
@@ -2779,7 +2688,6 @@
         save();
         exitMultiSelect();
         render();
-        updateBackupCountHint();
         return;
       }
       if (act === 'setstatus') {
@@ -3041,7 +2949,6 @@
   renderFilterRow();
   renderSortMenu();
   render();
-  updateBackupCountHint();
 
   if (document.readyState === 'complete') {
     injectAppFont();
