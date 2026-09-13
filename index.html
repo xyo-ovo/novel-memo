@@ -1140,26 +1140,22 @@
   const WAIT_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v4l-5 5 5 5v4H7v-4l5-5-5-5z"/></svg>';
 
   // ---------- 备份包：书 + 分类 + 主题 + 设置 ----------
+  // 全量备份：每本书的所有字段原样保留、所有分类、所有主题（含封面）、所有设置
+  // 只排除 gistToken / gistId 这类本机密钥
   function buildBackup() {
-    // 导出前先把「genre 里含分类名、但 category 为空」的老书迁移到 category 字段，
-    // 否则备份出去的 records 里分类字段是空的，恢复后书就归不进分类了
+    // 导出前把「标签里含分类名、但还没分类」的书归入分类
     migrateLegacyCategories();
+    const safeSettings = Object.assign({}, settings);
+    delete safeSettings.gistToken;
+    delete safeSettings.gistId;
     return {
       app: 'novel-memo',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       records: records,
       categories: categories,
       themes: themes,
-      settings: {
-        coverWidth: settings.coverWidth,
-        coverGap: settings.coverGap,
-        coverRadius: settings.coverRadius,
-        activeThemeId: settings.activeThemeId,
-        durationFormat: settings.durationFormat,
-        colorTheme: settings.colorTheme,
-        fontScale: settings.fontScale
-      }
+      settings: safeSettings
     };
   }
 
@@ -1182,32 +1178,33 @@
   function applyBackup(bk) {
     const res = { added: 0, skipped: 0, catAdded: 0, themeAdded: 0, settingsApplied: false };
 
-    // ① 书：按「书名|作者」去重合并
+    // ① 书：按「书名|作者」去重合并；原样保留每本书的所有字段，不丢信息
     const seen = new Set(records.map(r => (r.title || '') + '|' + (r.author || '')));
     bk.records.forEach(item => {
       if (!item || !item.title) { res.skipped++; return; }
       const key = (item.title || '') + '|' + (item.author || '');
       if (seen.has(key)) { res.skipped++; return; }
       seen.add(key);
-      records.push({
-        id: item.id || makeId(),
-        title: item.title,
-        author: item.author || '',
-        genre: item.genre || '',
-        category: item.category || '',
-        status: item.status || 'finished',
-        rating: item.rating || 0,
-        wishDate: item.wishDate || '',
-        startDate: item.startDate || '',
-        startTime: item.startTime || '',
-        endDate: item.endDate || '',
-        endTime: item.endTime || '',
-        readingHours: item.readingHours ?? null,
-        wordCount: item.wordCount ?? null,
-        notes: item.notes || '',
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || new Date().toISOString(),
-      });
+      // 先把备份里这本书的字段整份拿过来（以后加新字段也不会丢），再补默认值
+      const rec = Object.assign({}, item);
+      rec.id = item.id || makeId();
+      rec.title = item.title;
+      rec.author = item.author || '';
+      rec.genre = item.genre || '';
+      rec.category = item.category || '';
+      rec.status = item.status || 'finished';
+      rec.rating = item.rating || 0;
+      if (typeof rec.wishDate === 'undefined') rec.wishDate = '';
+      if (typeof rec.startDate === 'undefined') rec.startDate = '';
+      if (typeof rec.startTime === 'undefined') rec.startTime = '';
+      if (typeof rec.endDate === 'undefined') rec.endDate = '';
+      if (typeof rec.endTime === 'undefined') rec.endTime = '';
+      if (typeof rec.readingHours === 'undefined') rec.readingHours = null;
+      if (typeof rec.wordCount === 'undefined') rec.wordCount = null;
+      if (typeof rec.notes === 'undefined') rec.notes = '';
+      if (!rec.createdAt) rec.createdAt = new Date().toISOString();
+      if (!rec.updatedAt) rec.updatedAt = new Date().toISOString();
+      records.push(rec);
       res.added++;
     });
     if (res.added) save();
@@ -1236,10 +1233,11 @@
       if (res.themeAdded) saveThemes();
     }
 
-    // ④ 设置：覆盖（不动 token / Gist ID）
+    // ④ 设置：整包合并（不动 token / Gist ID 这类本机密钥）
     if (bk.settings) {
-      ['coverWidth', 'coverGap', 'coverRadius', 'activeThemeId', 'durationFormat', 'colorTheme', 'fontScale'].forEach(k => {
-        if (typeof bk.settings[k] !== 'undefined') settings[k] = bk.settings[k];
+      Object.keys(bk.settings).forEach(k => {
+        if (k === 'gistToken' || k === 'gistId') return;
+        settings[k] = bk.settings[k];
       });
       saveSettings();
       document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
@@ -1258,8 +1256,8 @@
       res.settingsApplied = true;
     }
 
-    // ⑤ 恢复的书里若「genre 含分类名、但 category 为空」，也迁移一次，
-    //    这样从旧备份恢复也能自动把书归进对应分类
+    // ⑤ 恢复完再跑一次迁移：新导入的书如果 genre 里带分类名、category 还是空，
+    //    就自动归进对应分类（旧备份恢复也能救回来）
     migrateLegacyCategories();
 
     return res;
@@ -1358,24 +1356,22 @@
   function splitTags(s) {
     return [...new Set(String(s || '').split(/[,，、/;；\n]+/).map(t => t.trim()).filter(Boolean))];
   }
-  // 把老数据里「类型/标签写着分类名」的书迁移到独立的 category 字段。
-  // 注意：不能用 typeof r.category === 'undefined' 判断 —— load() 里已经把
-  // 所有老记录补成 category: ''，那种判断永远不成立，迁移就永远不会触发。
+  // 把「类型/标签里写着分类名」的书归入对应分类。
+  // 关键点：
+  //  1. 每次启动都会跑，只处理 category 还是空的书；已经有分类的不动，
+  //     所以以后新建了分类，老书也能自动归进去（不会再被"迁移过"的标记卡住）
+  //  2. 只读 genre，不删标签内容，标签原样留在卡片上
   function migrateLegacyCategories() {
     if (!categories.length) return false;
     let changed = false;
     records.forEach(r => {
-      if (r.catMigrated) return;
-      if (!r.category) {
-        const tags = splitTags(r.genre);
-        const hit = tags.filter(t => categories.indexOf(t) >= 0);
-        if (hit.length) {
-          r.category = hit[0];
-          r.genre = tags.filter(t => t !== hit[0]).join('、');
-        }
+      if (r.category) return;
+      const tags = splitTags(r.genre);
+      const hit = tags.filter(t => categories.indexOf(t) >= 0);
+      if (hit.length) {
+        r.category = hit[0];
+        changed = true;
       }
-      r.catMigrated = true;
-      changed = true;
     });
     if (changed) save();
     return changed;
@@ -1879,7 +1875,11 @@
   function render() {
     let shown = records;
     if (currentCategory) {
-      shown = shown.filter(r => r.category === currentCategory);
+      // 兜底：就算某本书的 category 还没迁过来，只要标签里有这个分类名也算
+      shown = shown.filter(r =>
+        r.category === currentCategory ||
+        (!r.category && splitTags(r.genre).indexOf(currentCategory) >= 0)
+      );
     }
     if (currentFilter === 'all') {
       shown = shown.filter(r => r.status !== 'wishlist');
@@ -2635,6 +2635,8 @@
     if (categories.includes(name)) { alert('这个分类已经有了'); return; }
     categories.push(name);
     saveCategories();
+    // 新建分类后立刻把标签里有这个名字、但还没分类的书归进来
+    migrateLegacyCategories();
     renderCategories();
     renderFilterRow();
     renderCategoryChips();
