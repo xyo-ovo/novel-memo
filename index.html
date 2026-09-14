@@ -243,18 +243,6 @@
     -webkit-overflow-scrolling: touch;
   }
   #list::-webkit-scrollbar { display: none; }
-  /* 顶部柔和渐隐：用 sticky 覆盖层代替 mask，避免滚动时整层重绘 */
-  #list::before {
-    content: '';
-    display: block;
-    position: sticky;
-    top: 0;
-    height: 12px;
-    margin: 0 0 -12px;
-    background: linear-gradient(to bottom, var(--bg), transparent);
-    pointer-events: none;
-    z-index: 5;
-  }
 
   .card-time {
     font-size: calc(12px * var(--fs));
