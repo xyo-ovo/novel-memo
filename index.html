@@ -911,8 +911,8 @@
     -webkit-user-select: text;
   }
 
-  #overlay-edit, #overlay-rank { align-items: stretch; }
-  #overlay-edit .sheet, #overlay-rank .sheet {
+  #overlay-edit { align-items: stretch; }
+  #overlay-edit .sheet {
     width: 100%;
     height: 100%;
     max-height: 100%;
@@ -922,14 +922,14 @@
     display: flex;
     flex-direction: column;
   }
-  #overlay-edit .sheet-btns, #overlay-rank .sheet-btns {
+  #overlay-edit .sheet-btns {
     position: sticky;
     bottom: 10px;
     background: var(--sheet-bg);
     padding: 12px 0 4px;
     margin-top: auto;
   }
-  #overlay-edit .sheet-grip, #overlay-rank .sheet-grip { display: none; }
+  #overlay-edit .sheet-grip { display: none; }
   #btn-delete { background: var(--red-soft); color: var(--red); }
   #btn-delete:active { background: #f2d9d9; }
 
@@ -941,121 +941,6 @@
   .color-swatch { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--field-bg); color: var(--text-sub); font-size: 12px; cursor: pointer; }
   .color-swatch .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
   .color-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(47,107,94,.12); color: var(--text); }
-
-  /* ---------- 阅读时长排行榜 ---------- */
-  #rank-list { padding-bottom: 8px; }
-  .rank-empty {
-    text-align: center;
-    padding: 64px 20px;
-    color: var(--text-dim);
-    font-size: calc(14px * var(--fs));
-    line-height: 1.9;
-  }
-  .rank-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 13px 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .rank-row:last-child { border-bottom: none; }
-  .rank-no {
-    flex-shrink: 0;
-    width: 30px;
-    padding-top: 1px;
-    font-size: calc(15px * var(--fs));
-    font-weight: 700;
-    color: var(--text-dim);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: .5px;
-  }
-  .rank-no.r1 { color: #d4a017; }
-  .rank-no.r2 { color: #98a4ad; }
-  .rank-no.r3 { color: #c08050; }
-  .rank-main { flex: 1; min-width: 0; }
-  .rank-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-  .rank-title {
-    font-size: calc(15px * var(--fs));
-    font-weight: 600;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .rank-hours {
-    flex-shrink: 0;
-    font-size: calc(14px * var(--fs));
-    font-weight: 700;
-    color: var(--accent);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-  .rank-sub {
-    margin-top: 2px;
-    font-size: calc(11.5px * var(--fs));
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .rank-bar {
-    margin-top: 7px;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--line);
-    overflow: hidden;
-  }
-  .rank-bar i {
-    display: block;
-    height: 100%;
-    border-radius: 3px;
-    background: var(--accent);
-    transition: width .3s;
-  }
-
-  #overlay-rank-img { align-items: center; justify-content: center; padding: 16px; }
-  .rank-img-wrap {
-    width: min(100%, 460px);
-    max-height: 94vh;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transform: translateY(16px) scale(.97);
-    transition: transform .28s cubic-bezier(.32,.72,.28,1);
-  }
-  #overlay-rank-img.show .rank-img-wrap { transform: translateY(0) scale(1); }
-  .rank-img-wrap img {
-    width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
-    border-radius: 16px;
-    box-shadow: 0 18px 60px rgba(30,40,50,.34);
-    background: #fff;
-    -webkit-user-select: auto;
-    user-select: auto;
-  }
-  .rank-img-hint {
-    text-align: center;
-    font-size: 12px;
-    color: rgba(255,255,255,.72);
-    letter-spacing: .3px;
-  }
-  .rank-img-btns { display: flex; gap: 10px; }
-  .rank-img-btns button {
-    flex: 1;
-    height: 48px;
-    border-radius: 14px;
-    border: none;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: .3px;
-    transition: background .15s;
-  }
-  #btn-rank-img-close { background: rgba(255,255,255,.16); color: #fff; }
-  #btn-rank-img-close:active { background: rgba(255,255,255,.28); }
-  #btn-rank-img-save { background: var(--accent); color: #fff; }
-  #btn-rank-img-save:active { background: var(--accent-strong); }
 </style>
 </head>
 <body>
@@ -1295,12 +1180,6 @@
         </select>
       </div>
 
-      <div class="section-title">阅读统计</div>
-      <div class="io-row">
-        <button id="btn-open-rank">阅读时长排行榜</button>
-      </div>
-      <div style="font-size:11px;color:#8b98a3;margin-top:8px;">按阅读时长从高到低排名，可以生成一张图片保存下来</div>
-
       <div class="section-title">批量导入 / 本地备份</div>
       <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
       <div class="io-row">
@@ -1344,30 +1223,6 @@
         <button id="btn-gist-download">从 GitHub 恢复</button>
       </div>
       <div class="io-result" id="gist-result"></div>
-    </div>
-  </div>
-</div>
-
-<!-- 阅读时长排行榜 -->
-<div class="overlay" id="overlay-rank">
-  <div class="sheet">
-    <h2>阅读时长排行榜</h2>
-    <div id="rank-list"></div>
-    <div class="sheet-btns">
-      <button id="btn-rank-close">关闭</button>
-      <button id="btn-rank-share">生成图片</button>
-    </div>
-  </div>
-</div>
-
-<!-- 排行榜图片预览 -->
-<div class="overlay" id="overlay-rank-img">
-  <div class="rank-img-wrap">
-    <img id="rank-img" alt="阅读时长排行榜">
-    <div class="rank-img-hint">长按图片可以保存到相册</div>
-    <div class="rank-img-btns">
-      <button id="btn-rank-img-close">关闭</button>
-      <button id="btn-rank-img-save">保存图片</button>
     </div>
   </div>
 </div>
@@ -1876,10 +1731,6 @@
   const $filterRow = document.getElementById('filter-row');
   const $overlayEdit = document.getElementById('overlay-edit');
   const $overlayIo = document.getElementById('overlay-io');
-  const $overlayRank = document.getElementById('overlay-rank');
-  const $overlayRankImg = document.getElementById('overlay-rank-img');
-  const $rankList = document.getElementById('rank-list');
-  const $rankImg = document.getElementById('rank-img');
   const $sheetTitle = document.getElementById('sheet-title');
   const $importArea = document.getElementById('import-area');
   const $ioResult = document.getElementById('io-result');
@@ -2755,226 +2606,6 @@
     $ioResult.style.color = '#8b98a3';
   }
 
-  // ---------- 阅读时长排行榜 ----------
-  // 排行里统一用「X小时Y分」这种写法，不跟随设置里的显示格式，
-  // 这样每一行的时长宽度接近，右对齐时更整齐
-  function rankHoursText(h) {
-    const totalMin = Math.round(h * 60);
-    const H = Math.floor(totalMin / 60);
-    const M = totalMin % 60;
-    if (H && M) return H + '小时' + M + '分';
-    if (H) return H + '小时';
-    return M + '分钟';
-  }
-
-  function getRankedRecords() {
-    return records
-      .filter(r => r.readingHours != null && r.readingHours > 0)
-      .slice()
-      .sort((a, b) => (b.readingHours || 0) - (a.readingHours || 0));
-  }
-
-  function renderRankList() {
-    const ranked = getRankedRecords();
-    if (!ranked.length) {
-      $rankList.innerHTML = '<div class="rank-empty">还没有记录过阅读时长<br>在编辑记录里填上「阅读时长」<br>就会出现在这个榜单里</div>';
-      return;
-    }
-    const maxHours = ranked[0].readingHours || 1;
-    $rankList.innerHTML = ranked.map((r, i) => {
-      const ratio = Math.max(0.015, (r.readingHours || 0) / maxHours);
-      const noCls = i === 0 ? ' r1' : (i === 1 ? ' r2' : (i === 2 ? ' r3' : ''));
-      const sub = r.author ? esc(r.author) : '';
-      return `
-        <div class="rank-row">
-          <span class="rank-no${noCls}">${String(i + 1).padStart(2, '0')}</span>
-          <div class="rank-main">
-            <div class="rank-line">
-              <span class="rank-title">${esc(r.title || '')}</span>
-              <span class="rank-hours">${rankHoursText(r.readingHours)}</span>
-            </div>
-            ${sub ? `<div class="rank-sub">${sub}</div>` : ''}
-            <div class="rank-bar"><i style="width:${(ratio * 100).toFixed(1)}%"></i></div>
-          </div>
-        </div>`;
-    }).join('');
-  }
-
-  // canvas 里不用自定义字体：分享出去别人也没装，用系统字体栈更稳
-  const RANK_FONT = '-apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei", sans-serif';
-  const RANK_MAX_ROWS = 15;
-
-  function canvasRoundRect(ctx, x, y, w, h, r) {
-    const rr = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.arcTo(x + w, y, x + w, y + h, rr);
-    ctx.arcTo(x + w, y + h, x, y + h, rr);
-    ctx.arcTo(x, y + h, x, y, rr);
-    ctx.arcTo(x, y, x + w, y, rr);
-    ctx.closePath();
-  }
-
-  function canvasFitText(ctx, text, maxW) {
-    const s = String(text || '');
-    if (ctx.measureText(s).width <= maxW) return s;
-    let t = s;
-    while (t.length > 1 && ctx.measureText(t + '…').width > maxW) {
-      t = t.slice(0, -1);
-    }
-    return t + '…';
-  }
-
-  function buildRankCanvas() {
-    const all = getRankedRecords();
-    if (!all.length) return null;
-    const ranked = all.slice(0, RANK_MAX_ROWS);
-
-    const cs = getComputedStyle(document.documentElement);
-    const cssVar = (name, fallback) => {
-      const v = (cs.getPropertyValue(name) || '').trim();
-      return v || fallback;
-    };
-    const accent = cssVar('--accent', '#2f6b5e');
-    const bg = cssVar('--bg', '#f5f6f8');
-    const textColor = cssVar('--text', '#26333d');
-    const dimColor = cssVar('--text-dim', '#8b98a3');
-    const lineColor = cssVar('--line', '#e6eaee');
-
-    const W = 720;
-    const PAD = 48;
-    const ROW_H = 96;
-    const HEAD_H = 190;
-    const FOOT_H = 120;
-    const H = HEAD_H + ranked.length * ROW_H + FOOT_H;
-
-    const dpr = Math.min(3, Math.max(2, window.devicePixelRatio || 2));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    // 背景
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-
-    // 顶部主色条
-    ctx.fillStyle = accent;
-    ctx.fillRect(0, 0, W, 8);
-
-    // 标题
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = textColor;
-    ctx.font = '700 38px ' + RANK_FONT;
-    ctx.fillText('阅读时长排行榜', PAD, 98);
-
-    // 副标题
-    ctx.fillStyle = dimColor;
-    ctx.font = '400 21px ' + RANK_FONT;
-    const subText = all.length > ranked.length
-      ? '共 ' + all.length + ' 本，展示前 ' + ranked.length + ' · ' + todayStr()
-      : '共 ' + all.length + ' 本 · ' + todayStr();
-    ctx.fillText(subText, PAD, 138);
-
-    // 分隔线
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(PAD, 168);
-    ctx.lineTo(W - PAD, 168);
-    ctx.stroke();
-
-    // 条目
-    const maxHours = ranked[0].readingHours || 1;
-    const barX = PAD + 46;
-    const barW = W - PAD - barX;
-
-    ranked.forEach((r, i) => {
-      const y = HEAD_H + i * ROW_H;
-      const hoursText = rankHoursText(r.readingHours);
-
-      // 排名
-      ctx.textAlign = 'left';
-      ctx.fillStyle = i === 0 ? '#d4a017' : (i === 1 ? '#98a4ad' : (i === 2 ? '#c08050' : dimColor));
-      ctx.font = '700 22px ' + RANK_FONT;
-      ctx.fillText(String(i + 1).padStart(2, '0'), PAD, y + 30);
-
-      // 时长（先测宽度，书名要避让）
-      ctx.textAlign = 'right';
-      ctx.fillStyle = accent;
-      ctx.font = '700 24px ' + RANK_FONT;
-      ctx.fillText(hoursText, W - PAD, y + 30);
-      const hoursW = ctx.measureText(hoursText).width;
-
-      // 书名
-      ctx.textAlign = 'left';
-      ctx.fillStyle = textColor;
-      ctx.font = '600 25px ' + RANK_FONT;
-      const titleMax = Math.max(60, barW - hoursW - 24);
-      ctx.fillText(canvasFitText(ctx, r.title || '', titleMax), barX, y + 30);
-
-      // 进度条
-      const ratio = Math.max(0.015, (r.readingHours || 0) / maxHours);
-      ctx.fillStyle = lineColor;
-      canvasRoundRect(ctx, barX, y + 54, barW, 9, 5);
-      ctx.fill();
-
-      ctx.fillStyle = accent;
-      canvasRoundRect(ctx, barX, y + 54, Math.max(9, barW * ratio), 9, 5);
-      ctx.fill();
-    });
-
-    // 底部
-    ctx.textAlign = 'center';
-    ctx.fillStyle = dimColor;
-    ctx.font = '400 19px ' + RANK_FONT;
-    ctx.fillText('小说备忘录', W / 2, H - 54);
-
-    return canvas;
-  }
-
-  let rankBlobUrl = '';
-
-  function openRankImage() {
-    const canvas = buildRankCanvas();
-    if (!canvas) {
-      alert('还没有记录过阅读时长');
-      return;
-    }
-    const done = (url) => {
-      if (rankBlobUrl && rankBlobUrl !== url) {
-        try { URL.revokeObjectURL(rankBlobUrl); } catch (e) {}
-      }
-      rankBlobUrl = url;
-      $rankImg.src = url;
-      $overlayRankImg.classList.add('show');
-    };
-    try {
-      canvas.toBlob((blob) => {
-        if (!blob) { alert('生成图片失败'); return; }
-        done(URL.createObjectURL(blob));
-      }, 'image/png');
-    } catch (e) {
-      alert('生成图片失败');
-    }
-  }
-
-  function saveRankImage() {
-    if (!rankBlobUrl) return;
-    try {
-      const a = document.createElement('a');
-      a.href = rankBlobUrl;
-      a.download = '阅读排行榜_' + todayStr() + '.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (e) {
-      alert('保存失败，长按上方图片即可保存到相册');
-    }
-  }
-
   function openEditSheet(record) {
     editingId = record ? record.id : null;
     $sheetTitle.textContent = record ? '编辑记录' : '添加记录';
@@ -3147,20 +2778,6 @@
       $btnToggleToken.classList.toggle('on', show);
     });
   }
-
-  // 排行榜入口
-  document.getElementById('btn-open-rank').addEventListener('click', () => {
-    renderRankList();
-    $overlayRank.classList.add('show');
-  });
-  document.getElementById('btn-rank-close').addEventListener('click', () => {
-    $overlayRank.classList.remove('show');
-  });
-  document.getElementById('btn-rank-share').addEventListener('click', openRankImage);
-  document.getElementById('btn-rank-img-close').addEventListener('click', () => {
-    $overlayRankImg.classList.remove('show');
-  });
-  document.getElementById('btn-rank-img-save').addEventListener('click', saveRankImage);
 
   if ($sortBtn) {
     $sortBtn.addEventListener('click', (e) => {
@@ -3371,6 +2988,19 @@
   $list.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
   $list.addEventListener('mouseleave', () => { clearTimeout(pressTimer); });
 
+  // 桌面端：鼠标滚轮也能滚列表
+  // 有些壳（WebView / 内嵌浏览器）不会把 wheel 事件交给内部滚动容器，
+  // 所以这里手动接一下，转成 #list 自己的滚动
+  $list.addEventListener('wheel', (e) => {
+    if ($list.scrollHeight <= $list.clientHeight) return;
+    if (e.ctrlKey) return; // 捏合缩放之类的不拦
+    e.preventDefault();
+    let delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 18;             // 按行
+    else if (e.deltaMode === 2) delta *= $list.clientHeight; // 按页
+    $list.scrollTop += delta;
+  }, { passive: false });
+
   document.getElementById('btn-new-theme').addEventListener('click', () => {
     const name = $newThemeName.value.trim();
     if (!name) { alert('请输入主题名称'); return; }
@@ -3468,7 +3098,7 @@
     render();
   });
 
-  [$overlayEdit, $overlayIo, $overlayRank, $overlayRankImg].forEach(ov => {
+  [$overlayEdit, $overlayIo].forEach(ov => {
     ov.addEventListener('click', (e) => {
       if (e.target === ov) ov.classList.remove('show');
     });
