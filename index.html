@@ -19,6 +19,7 @@
     --card: #ffffff;
     --card-glass: rgba(255,255,255,.66);
     --card-border: rgba(255,255,255,.8);
+    --glass-active: rgba(255,255,255,.92);
     --glow1: rgba(47,107,94,.12);
     --glow2: rgba(74,130,190,.10);
     --text: #26333d;
@@ -99,8 +100,10 @@
   #menu-btn {
     width: 40px; height: 40px;
     border-radius: 12px;
-    border: 1px solid var(--line);
-    background: var(--card);
+    border: 1px solid var(--card-border);
+    background: var(--card-glass);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+    backdrop-filter: blur(14px) saturate(1.5);
     color: var(--text-sub);
     cursor: pointer;
     box-shadow: var(--shadow-card);
@@ -109,7 +112,7 @@
     justify-content: center;
     transition: background .15s;
   }
-  #menu-btn:active { background: #f0f2f5; }
+  #menu-btn:active { background: var(--glass-active); }
 
   .toolbar { padding: 12px 16px 4px; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
   .search-box { flex: 1; position: relative; }
@@ -117,8 +120,10 @@
   .search-box input {
     width: 100%; height: 44px;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--line);
-    background: var(--card);
+    border: 1px solid var(--card-border);
+    background: var(--card-glass);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+    backdrop-filter: blur(14px) saturate(1.5);
     color: var(--text);
     padding: 0 14px 0 40px;
     font-size: calc(14px * var(--fs));
@@ -134,8 +139,10 @@
     height: 44px;
     width: 44px;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--line);
-    background: var(--card);
+    border: 1px solid var(--card-border);
+    background: var(--card-glass);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+    backdrop-filter: blur(14px) saturate(1.5);
     color: var(--text-sub);
     cursor: pointer;
     box-shadow: var(--shadow-card);
@@ -144,15 +151,17 @@
     justify-content: center;
     transition: background .15s, border-color .15s, color .15s;
   }
-  #sort-btn:active { background: #f0f2f5; }
+  #sort-btn:active { background: var(--glass-active); }
   #sort-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .sort-menu {
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
     min-width: 190px;
-    background: var(--card);
-    border: 1px solid var(--line);
+    background: var(--card-glass);
+    -webkit-backdrop-filter: blur(22px) saturate(1.7);
+    backdrop-filter: blur(22px) saturate(1.7);
+    border: 1px solid var(--card-border);
     border-radius: 14px;
     box-shadow: 0 12px 34px rgba(30,40,50,.18);
     padding: 6px;
@@ -178,7 +187,7 @@
     white-space: nowrap;
     transition: background .12s;
   }
-  .sort-menu button:active { background: #f3f5f7; }
+  .sort-menu button:active { background: var(--glass-active); }
   .sort-menu button.active { color: var(--accent); font-weight: 600; background: var(--accent-soft); }
 
 
@@ -390,8 +399,10 @@
     position: absolute;
     left: 12px; right: 12px;
     bottom: calc(14px + var(--safe-bottom));
-    background: var(--card);
-    border: 1px solid var(--line);
+    background: var(--card-glass);
+    -webkit-backdrop-filter: blur(22px) saturate(1.7);
+    backdrop-filter: blur(22px) saturate(1.7);
+    border: 1px solid var(--card-border);
     border-radius: 16px;
     box-shadow: 0 10px 34px rgba(30,40,50,.20);
     padding: 10px 12px;
@@ -1480,11 +1491,11 @@
   }
 
   const COLOR_THEMES = {
-    forest: { bg:'#f5f6f8', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', glow1:'rgba(47,107,94,.13)', glow2:'rgba(74,130,190,.11)', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },
-    mist: { bg:'#f4f6f9', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', glow1:'rgba(74,127,165,.14)', glow2:'rgba(74,130,190,.10)', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c07a3a', 'orange-soft':'#faf0e3', gold:'#c99a3b' },
-    caramel: { bg:'#f8f5f2', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', glow1:'rgba(160,107,74,.13)', glow2:'rgba(201,154,59,.10)', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#b8742f', 'orange-soft':'#f9eddf', gold:'#c99a3b' },
-    sakura: { bg:'#faf6f7', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', glow1:'rgba(176,106,123,.13)', glow2:'rgba(74,130,190,.09)', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#3f9b7a', 'green-soft':'#e8f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c4762c', 'orange-soft':'#fbeee0', gold:'#c99a3b' },
-    night: { bg:'#1e242a', card:'#282f36', 'card-glass':'rgba(41,48,56,.66)', 'card-border':'rgba(255,255,255,.07)', glow1:'rgba(94,168,141,.16)', glow2:'rgba(106,151,196,.12)', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', orange:'#d99a5e', 'orange-soft':'#3a2f22', gold:'#d0a44e' }
+    forest: { bg:'#f5f6f8', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', 'glass-active':'rgba(255,255,255,.92)', glow1:'rgba(47,107,94,.13)', glow2:'rgba(74,130,190,.11)', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },
+    mist: { bg:'#f4f6f9', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', 'glass-active':'rgba(255,255,255,.92)', glow1:'rgba(74,127,165,.14)', glow2:'rgba(74,130,190,.10)', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c07a3a', 'orange-soft':'#faf0e3', gold:'#c99a3b' },
+    caramel: { bg:'#f8f5f2', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', 'glass-active':'rgba(255,255,255,.92)', glow1:'rgba(160,107,74,.13)', glow2:'rgba(201,154,59,.10)', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#b8742f', 'orange-soft':'#f9eddf', gold:'#c99a3b' },
+    sakura: { bg:'#faf6f7', card:'#ffffff', 'card-glass':'rgba(255,255,255,.66)', 'card-border':'rgba(255,255,255,.8)', 'glass-active':'rgba(255,255,255,.92)', glow1:'rgba(176,106,123,.13)', glow2:'rgba(74,130,190,.09)', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#3f9b7a', 'green-soft':'#e8f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c4762c', 'orange-soft':'#fbeee0', gold:'#c99a3b' },
+    night: { bg:'#1e242a', card:'#282f36', 'card-glass':'rgba(41,48,56,.66)', 'card-border':'rgba(255,255,255,.07)', 'glass-active':'rgba(58,68,77,.85)', glow1:'rgba(94,168,141,.16)', glow2:'rgba(106,151,196,.12)', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', orange:'#d99a5e', 'orange-soft':'#3a2f22', gold:'#d0a44e' }
   };
   function applyColorTheme(themeId) {
     const t = COLOR_THEMES[themeId] || COLOR_THEMES.forest;
