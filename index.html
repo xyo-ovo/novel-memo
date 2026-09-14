@@ -26,7 +26,7 @@
     --sheet-glass: rgba(255,255,255,.86);
     --field-bg: #fafbfc;
     --btn-soft-bg: #ffffff;
-    --scroll-thumb: rgba(139,152,163,.42);
+    --scroll-thumb: rgba(139,152,163,.55);
     --glow1: rgba(47,107,94,.12);
     --glow2: rgba(74,130,190,.10);
     --accent-glass: rgba(47,107,94,.12);
@@ -242,15 +242,29 @@
     overflow-y: auto;
     padding: 14px 16px 110px;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
-  /* 滚动条：细一点、半透明，滚动时才明显 */
-  #list::-webkit-scrollbar { width: 5px; }
-  #list::-webkit-scrollbar-track { background: transparent; }
-  #list::-webkit-scrollbar-thumb {
-    background: var(--scroll-thumb);
+  #list::-webkit-scrollbar { display: none; }
+
+  /* 自绘滚动指示条：手机上原生滚动条只在滑动瞬间闪现，
+     这里自己画一条，滑动时出现在列表右侧 */
+  .scroll-indicator {
+    position: absolute;
+    right: 3px;
+    width: 3px;
+    pointer-events: none;
+    z-index: 15;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .scroll-indicator.show { opacity: 1; }
+  .scroll-indicator i {
+    display: block;
+    width: 100%;
+    height: 100%;
     border-radius: 999px;
+    background: var(--scroll-thumb);
   }
-  #list::-webkit-scrollbar-thumb:active { background: var(--text-dim); }
 
   .card-time {
     font-size: calc(12px * var(--fs));
@@ -998,6 +1012,8 @@
 
   <div id="list"></div>
 
+  <div class="scroll-indicator" id="scroll-indicator"><i></i></div>
+
   <div class="multi-bar" id="multi-bar"></div>
 
   <button id="fab" title="添加记录">
@@ -1536,11 +1552,11 @@
   }
 
   const COLOR_THEMES = {
-    forest: { bg:'#f5f6f8', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(139,152,163,.42)', 'accent-glass':'rgba(47,107,94,.12)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(201,122,53,.15)', 'wishlist-glass':'rgba(139,152,163,.16)', glow1:'rgba(47,107,94,.13)', glow2:'rgba(74,130,190,.11)', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },
-    mist: { bg:'#f4f6f9', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(135,149,160,.42)', 'accent-glass':'rgba(74,127,165,.13)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(192,122,58,.15)', 'wishlist-glass':'rgba(135,149,160,.16)', glow1:'rgba(74,127,165,.14)', glow2:'rgba(74,130,190,.10)', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c07a3a', 'orange-soft':'#faf0e3', gold:'#c99a3b' },
-    caramel: { bg:'#f8f5f2', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(148,138,132,.42)', 'accent-glass':'rgba(160,107,74,.13)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(184,116,47,.15)', 'wishlist-glass':'rgba(148,138,132,.16)', glow1:'rgba(160,107,74,.13)', glow2:'rgba(201,154,59,.10)', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#b8742f', 'orange-soft':'#f9eddf', gold:'#c99a3b' },
-    sakura: { bg:'#faf6f7', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(152,134,140,.42)', 'accent-glass':'rgba(176,106,123,.13)', 'green-glass':'rgba(63,155,122,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(196,118,44,.15)', 'wishlist-glass':'rgba(152,134,140,.16)', glow1:'rgba(176,106,123,.13)', glow2:'rgba(74,130,190,.09)', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#3f9b7a', 'green-soft':'#e8f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c4762c', 'orange-soft':'#fbeee0', gold:'#c99a3b' },
-    night: { bg:'#1e242a', card:'#282f36', 'card-glass':'rgba(41,48,56,.52)', 'card-border':'rgba(255,255,255,.06)', 'card-press':'rgba(48,56,64,.72)', 'glass-active':'rgba(58,68,77,.75)', 'glass-highlight':'rgba(255,255,255,.07)', 'sheet-bg':'#282f36', 'sheet-glass':'rgba(38,45,52,.86)', 'field-bg':'rgba(255,255,255,.07)', 'btn-soft-bg':'rgba(255,255,255,.08)', 'scroll-thumb':'rgba(154,167,176,.30)', 'accent-glass':'rgba(94,168,141,.18)', 'green-glass':'rgba(93,174,139,.20)', 'blue-glass':'rgba(106,151,196,.20)', 'orange-glass':'rgba(217,154,94,.20)', 'wishlist-glass':'rgba(154,167,176,.14)', glow1:'rgba(94,168,141,.16)', glow2:'rgba(106,151,196,.12)', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', orange:'#d99a5e', 'orange-soft':'#3a2f22', gold:'#d0a44e' }
+    forest: { bg:'#f5f6f8', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(139,152,163,.55)', 'accent-glass':'rgba(47,107,94,.12)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(201,122,53,.15)', 'wishlist-glass':'rgba(139,152,163,.16)', glow1:'rgba(47,107,94,.13)', glow2:'rgba(74,130,190,.11)', text:'#26333d', 'text-sub':'#64727d', 'text-dim':'#8b98a3', line:'#e6eaee', accent:'#2f6b5e', 'accent-strong':'#275a4f', 'accent-soft':'#e9f1ee', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },
+    mist: { bg:'#f4f6f9', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(135,149,160,.55)', 'accent-glass':'rgba(74,127,165,.13)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(192,122,58,.15)', 'wishlist-glass':'rgba(135,149,160,.16)', glow1:'rgba(74,127,165,.14)', glow2:'rgba(74,130,190,.10)', text:'#25313c', 'text-sub':'#5d6c78', 'text-dim':'#8795a0', line:'#e2e8ee', accent:'#4a7fa5', 'accent-strong':'#3d6a8a', 'accent-soft':'#eaf2f8', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c07a3a', 'orange-soft':'#faf0e3', gold:'#c99a3b' },
+    caramel: { bg:'#f8f5f2', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(148,138,132,.55)', 'accent-glass':'rgba(160,107,74,.13)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(184,116,47,.15)', 'wishlist-glass':'rgba(148,138,132,.16)', glow1:'rgba(160,107,74,.13)', glow2:'rgba(201,154,59,.10)', text:'#2d2622', 'text-sub':'#695f59', 'text-dim':'#948a84', line:'#e9e1da', accent:'#a06b4a', 'accent-strong':'#855838', 'accent-soft':'#f4ece5', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#b8742f', 'orange-soft':'#f9eddf', gold:'#c99a3b' },
+    sakura: { bg:'#faf6f7', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.86)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(152,134,140,.55)', 'accent-glass':'rgba(176,106,123,.13)', 'green-glass':'rgba(63,155,122,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(196,118,44,.15)', 'wishlist-glass':'rgba(152,134,140,.16)', glow1:'rgba(176,106,123,.13)', glow2:'rgba(74,130,190,.09)', text:'#2d2326', 'text-sub':'#6b5a5f', 'text-dim':'#98868c', line:'#ecdde1', accent:'#b06a7b', 'accent-strong':'#965766', 'accent-soft':'#f8ecef', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#3f9b7a', 'green-soft':'#e8f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c4762c', 'orange-soft':'#fbeee0', gold:'#c99a3b' },
+    night: { bg:'#1e242a', card:'#282f36', 'card-glass':'rgba(41,48,56,.52)', 'card-border':'rgba(255,255,255,.06)', 'card-press':'rgba(48,56,64,.72)', 'glass-active':'rgba(58,68,77,.75)', 'glass-highlight':'rgba(255,255,255,.07)', 'sheet-bg':'#282f36', 'sheet-glass':'rgba(38,45,52,.86)', 'field-bg':'rgba(255,255,255,.07)', 'btn-soft-bg':'rgba(255,255,255,.08)', 'scroll-thumb':'rgba(154,167,176,.42)', 'accent-glass':'rgba(94,168,141,.18)', 'green-glass':'rgba(93,174,139,.20)', 'blue-glass':'rgba(106,151,196,.20)', 'orange-glass':'rgba(217,154,94,.20)', 'wishlist-glass':'rgba(154,167,176,.14)', glow1:'rgba(94,168,141,.16)', glow2:'rgba(106,151,196,.12)', text:'#e6edf2', 'text-sub':'#9aa7b0', 'text-dim':'#6f7d87', line:'#3a444d', accent:'#5ea88d', 'accent-strong':'#4f9278', 'accent-soft':'#2b3b34', blue:'#6a97c4', 'blue-soft':'#243444', green:'#5dae8b', 'green-soft':'#243a31', red:'#c47f7f', 'red-soft':'#3a2828', orange:'#d99a5e', 'orange-soft':'#3a2f22', gold:'#d0a44e' }
   };
   function applyColorTheme(themeId) {
     const t = COLOR_THEMES[themeId] || COLOR_THEMES.forest;
@@ -1739,6 +1755,7 @@
   const $filterRow = document.getElementById('filter-row');
   const $overlayEdit = document.getElementById('overlay-edit');
   const $overlayIo = document.getElementById('overlay-io');
+  const $scrollInd = document.getElementById('scroll-indicator');
   const $sheetTitle = document.getElementById('sheet-title');
   const $importArea = document.getElementById('import-area');
   const $ioResult = document.getElementById('io-result');
@@ -2194,6 +2211,7 @@
     }
 
     if (multiSelectMode) updateMultiSelectUI();
+    requestAnimationFrame(() => updateScrollIndicator(false));
   }
 
   function esc(s) {
@@ -2735,6 +2753,48 @@
     }
   }
 
+  // ---------- 自绘滚动指示条 ----------
+  let scrollIndTimer = null;
+  let scrollIndRaf = false;
+
+  // 算出 thumb 的长度和位置；force=true 时顺便点亮它
+  function updateScrollIndicator(force) {
+    const sh = $list.scrollHeight;
+    const ch = $list.clientHeight;
+    if (sh <= ch + 2) {
+      $scrollInd.classList.remove('show');
+      return;
+    }
+    const thumbH = Math.max(30, ch * (ch / sh));
+    const maxScroll = sh - ch;
+    const ratio = maxScroll > 0 ? Math.min(1, Math.max(0, $list.scrollTop / maxScroll)) : 0;
+    $scrollInd.style.top = ($list.offsetTop + ratio * (ch - thumbH)) + 'px';
+    $scrollInd.style.height = thumbH + 'px';
+    if (force) $scrollInd.classList.add('show');
+  }
+
+  // 滑动时点亮，停下来 1.2 秒后淡出
+  function flashScrollIndicator() {
+    updateScrollIndicator(true);
+    clearTimeout(scrollIndTimer);
+    scrollIndTimer = setTimeout(() => {
+      $scrollInd.classList.remove('show');
+    }, 1200);
+  }
+
+  $list.addEventListener('scroll', () => {
+    if (scrollIndRaf) return;
+    scrollIndRaf = true;
+    requestAnimationFrame(() => {
+      scrollIndRaf = false;
+      flashScrollIndicator();
+    });
+  }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    updateScrollIndicator($scrollInd.classList.contains('show'));
+  });
+
   $fab.addEventListener('click', () => openEditSheet(null));
 
   document.getElementById('menu-btn').addEventListener('click', () => {
@@ -3165,6 +3225,7 @@
     const top = scrollMemory[nextKey] || 0;
     requestAnimationFrame(() => {
       try { $list.scrollTop = top; } catch (err) {}
+      updateScrollIndicator(false);
     });
   });
 
@@ -3231,6 +3292,9 @@
     window.addEventListener('load', injectAppFont);
   }
   registerServiceWorker();
+
+  // 首次进来先亮一下，提示"这页可以滚"
+  setTimeout(flashScrollIndicator, 600);
 })();
 </script>
 </body>
