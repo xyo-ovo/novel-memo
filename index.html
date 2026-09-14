@@ -96,38 +96,11 @@
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
-    transition: padding .28s cubic-bezier(.32,.72,.28,1);
   }
-  header.compact { padding: 10px 20px 6px; }
-  .brand h1 {
-    font-size: calc(24px * var(--fs));
-    font-weight: 700;
-    letter-spacing: .3px;
-    line-height: 1.2;
-    transition: font-size .28s cubic-bezier(.32,.72,.28,1);
-  }
-  header.compact .brand h1 { font-size: calc(19px * var(--fs)); }
-  .brand .sub {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 2px;
-    margin-top: 3px;
-    text-transform: uppercase;
-    transition: opacity .2s, margin-top .28s;
-  }
-  header.compact .brand .sub { opacity: 0; margin-top: 0; }
+  .brand h1 { font-size: calc(24px * var(--fs)); font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brand .sub { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-top: 3px; text-transform: uppercase; }
   .header-right { display: flex; align-items: center; gap: 14px; }
-  .stats {
-    display: flex;
-    gap: 14px;
-    transition: opacity .22s, transform .22s;
-    transform-origin: right center;
-  }
-  header.compact .stats {
-    opacity: 0;
-    transform: scale(.82) translateX(10px);
-    pointer-events: none;
-  }
+  .stats { display: flex; gap: 14px; }
   .stats .stat { text-align: right; }
   .stats .num { font-size: calc(17px * var(--fs)); font-weight: 700; line-height: 1.2; }
   .stats .lbl { font-size: calc(10px * var(--fs)); color: var(--text-dim); letter-spacing: .5px; }
@@ -299,7 +272,8 @@
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  #list.anim .card { animation: cardIn .34s cubic-bezier(.32,.72,.28,1) backwards; }
+  #list.anim .card,
+  #list.anim .card-time { animation: cardIn .34s cubic-bezier(.32,.72,.28,1) backwards; }
 
   .card-layout { display: flex; gap: var(--cover-gap); align-items: center; }
   .card-main { flex: 1; min-width: 0; }
@@ -1776,7 +1750,6 @@
   const $app = document.getElementById('app');
   const $sortBtn = document.getElementById('sort-btn');
   const $sortMenu = document.getElementById('sort-menu');
-  const $header = document.querySelector('header');
 
   const fTitle = document.getElementById('f-title');
   const fAuthor = document.getElementById('f-author');
@@ -2196,12 +2169,21 @@
         </div>`;
     }).join('');
 
-    // 依次错开浮现
+    // 依次错开浮现：卡片上方的时间标签和卡片本身同步入场
     if (anim) {
       let idx = 0;
+      let pendingTime = null;
       Array.from($list.children).forEach(el => {
-        if (el.classList && el.classList.contains('card')) {
-          el.style.animationDelay = (Math.min(idx, 14) * 32) + 'ms';
+        if (!el.classList) return;
+        if (el.classList.contains('card-time')) {
+          pendingTime = el;
+        } else if (el.classList.contains('card')) {
+          const delay = (Math.min(idx, 14) * 32) + 'ms';
+          el.style.animationDelay = delay;
+          if (pendingTime) {
+            pendingTime.style.animationDelay = delay;
+            pendingTime = null;
+          }
           idx++;
         }
       });
@@ -3009,22 +2991,6 @@
   });
   $list.addEventListener('mouseup', () => { clearTimeout(pressTimer); });
   $list.addEventListener('mouseleave', () => { clearTimeout(pressTimer); });
-
-  // 往下滚时标题栏收缩，把空间让给列表
-  let headerCompact = false;
-  let scrollRaf = false;
-  $list.addEventListener('scroll', () => {
-    if (scrollRaf) return;
-    scrollRaf = true;
-    requestAnimationFrame(() => {
-      scrollRaf = false;
-      const next = $list.scrollTop > 30;
-      if (next !== headerCompact) {
-        headerCompact = next;
-        $header.classList.toggle('compact', headerCompact);
-      }
-    });
-  }, { passive: true });
 
   document.getElementById('btn-new-theme').addEventListener('click', () => {
     const name = $newThemeName.value.trim();
