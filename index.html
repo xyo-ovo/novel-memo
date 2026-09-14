@@ -282,8 +282,8 @@
     border: 1.5px solid currentColor;
   }
 
-  .meta-line { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: calc(11.5px * var(--fs)); color: var(--text-dim); }
-  .meta-line .meta-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .meta-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px 10px; font-size: calc(11px * var(--fs)); color: var(--text-dim); }
+  .meta-line .meta-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
   .meta-line .meta-item svg { color: var(--text-dim); }
   .meta-line .dur { color: var(--accent); font-weight: 600; }
   .meta-line .dur svg { color: var(--accent); }
@@ -690,12 +690,31 @@
   .theme-item-head .apply.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
   .theme-covers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .theme-cover-thumb {
+    position: relative;
     width: 44px; height: 60px;
     border-radius: 6px;
     overflow: hidden;
     background: #eef1f4;
   }
   .theme-cover-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .theme-cover-thumb .cover-del {
+    position: absolute;
+    top: 1px; right: 1px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,.55);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+  .theme-cover-thumb .cover-del:active { background: rgba(0,0,0,.85); }
   .theme-covers .add-cover-btn {
     width: 44px; height: 60px;
     border-radius: 6px;
@@ -1927,10 +1946,10 @@
     }
     if (years <= 0 && months <= 0 && days <= 0) return '';
     const parts = [];
-    if (years > 0) parts.push(years + ' 年');
-    if (months > 0) parts.push(months + ' 个月');
-    if (days > 0) parts.push(days + ' 天');
-    return parts.join(' ');
+    if (years > 0) parts.push(years + '年');
+    if (months > 0) parts.push(months + '个月');
+    if (days > 0) parts.push(days + '天');
+    return parts.join('');
   }
 
   function formatReadingHours(h) {
@@ -2025,7 +2044,7 @@
         ? `<div class="card-cover"><img src="${esc(coverUrl)}" alt="封面" loading="lazy"></div>`
         : '';
       const wc = (r.wordCount !== null && r.wordCount !== undefined && r.wordCount > 0)
-        ? `<span class="meta-item">${BOOK_SVG} ${r.wordCount}w字</span>` : '';
+        ? `<span class="meta-item">${BOOK_SVG} ${r.wordCount}w</span>` : '';
       const durText = formatReadingHours(r.readingHours);
       const dur = durText
         ? `<span class="meta-item dur">
@@ -2036,14 +2055,8 @@
       if (r.wishDate) {
         const waitText = formatWait(r.wishDate, r.startDate);
         waitPart = waitText
-          ? `<span class="meta-item wait">
-               ${WAIT_SVG}
-               ${esc(r.wishDate)} 想读 · 等了 ${esc(waitText)}
-             </span>`
-          : `<span class="meta-item wait">
-               ${WAIT_SVG}
-               ${esc(r.wishDate)} 想读
-             </span>`;
+          ? `<span class="meta-item wait">${WAIT_SVG}${esc(r.wishDate)}想读·等${esc(waitText)}</span>`
+          : `<span class="meta-item wait">${WAIT_SVG}${esc(r.wishDate)}想读</span>`;
       }
       const endDateStr = formatEndDate(r);
       const endPart = endDateStr
@@ -2109,7 +2122,7 @@
     }
     $themeList.innerHTML = themes.map(t => {
       const coverThumbs = (t.covers || []).map((c, i) =>
-        `<div class="theme-cover-thumb"><img src="${esc(c)}" alt="封面${i+1}"></div>`
+        `<div class="theme-cover-thumb"><img src="${esc(c)}" alt="封面${i+1}"><button class="cover-del" data-theme-id="${t.id}" data-idx="${i}" title="删除这张">×</button></div>`
       ).join('');
       const isActive = settings.activeThemeId === t.id;
       return `
@@ -2890,6 +2903,21 @@
   });
 
   $themeList.addEventListener('click', (e) => {
+    // 单张封面删除
+    const coverDel = e.target.closest('.cover-del');
+    if (coverDel) {
+      e.stopPropagation();
+      const cTid = coverDel.dataset.themeId;
+      const cIdx = parseInt(coverDel.dataset.idx, 10);
+      const cTheme = getTheme(cTid);
+      if (!cTheme) return;
+      if (!confirm('删除这张封面？')) return;
+      cTheme.covers.splice(cIdx, 1);
+      saveThemes();
+      renderThemes();
+      render();
+      return;
+    }
     const item = e.target.closest('.theme-item');
     if (!item) return;
     const tid = item.dataset.themeId;
