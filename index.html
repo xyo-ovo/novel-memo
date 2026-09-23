@@ -1178,7 +1178,7 @@
           <input id="set-cover-radius" type="number" min="0" max="30" step="1" value="0">
         </div>
       </div>
-      <div style="font-size:11px;color:#8b98a3;margin-top:6px;">封面透明、无阴影、垂直居中；同一主题的书按顺序轮流使用封面</div>
+      <div style="font-size:11px;color:#8b98a3;margin-top:6px;">封面不限大小，会自动压缩成 600px 内的小图再存进本地数据库；同一主题的书按顺序轮流使用封面</div>
       <input type="file" id="theme-cover-input" accept="image/*" multiple style="display:none">
 
       <div class="section-title">配色主题</div>
@@ -1284,20 +1284,32 @@
   // ---------- 备份包：书 + 分类 + 主题 + 设置 ----------
   // 全量备份：每本书的所有字段原样保留、所有分类、所有主题（含封面）、所有设置
   // 只排除 gistToken / gistId / restoreMode 这类本机设置
-  function buildBackup() {
+  // 封面存在 IndexedDB 里，导出前先读出来压缩成小图，再塞回主题
+  async function buildBackup() {
     // 导出前把「标签里含分类名、但还没分类」的书归入分类
     migrateLegacyCategories();
     const safeSettings = Object.assign({}, settings);
     delete safeSettings.gistToken;
     delete safeSettings.gistId;
     delete safeSettings.restoreMode;
+    const themesOut = [];
+    for (const t of themes) {
+      const covers = [];
+      for (const c of (t.covers || [])) {
+        const url = coverUrlOf(c);
+        if (!url) continue;
+        const dataUrl = await compressImageSource(url);
+        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:')) covers.push(dataUrl);
+      }
+      themesOut.push(Object.assign({}, t, { covers }));
+    }
     return {
       app: 'novel-memo',
       version: 3,
       exportedAt: new Date().toISOString(),
       records: records,
       categories: categories,
-      themes: themes,
+      themes: themesOut,
       settings: safeSettings
     };
   }
@@ -1341,7 +1353,7 @@
     return rec;
   }
 
-  function applyBackup(bk, mode) {
+  async function applyBackup(bk, mode) {
     mode = mode || 'merge';
     const res = { added: 0, skipped: 0, merged: 0, replaced: 0, catAdded: 0, themeAdded: 0, settingsApplied: false };
 
@@ -1363,7 +1375,16 @@
         saveCategories();
       }
       if (bk.themes) {
+        // 旧主题的封面先从 IDB 清掉（备份里还用得到的保留）
+        const oldCoverIds = [];
+        themes.forEach(t => (t.covers || []).forEach(c => {
+          if (typeof c === 'string' && !c.startsWith('data:')) oldCoverIds.push(c);
+        }));
         themes = bk.themes.slice();
+        await Promise.all(themes.map(t => importThemeCovers(t)));
+        const newIds = new Set();
+        themes.forEach(t => (t.covers || []).forEach(c => { if (typeof c === 'string') newIds.add(c); }));
+        oldCoverIds.forEach(id => { if (!newIds.has(id)) removeCover(id); });
         res.themeAdded = themes.length;
         saveThemes();
       }
@@ -1400,14 +1421,19 @@
       }
       if (bk.themes) {
         const ids = new Set(themes.map(t => t.id));
+        const addedThemes = [];
         bk.themes.forEach(t => {
           if (t && t.id && !ids.has(t.id)) {
+            addedThemes.push(t);
             themes.push(t);
             ids.add(t.id);
-            res.themeAdded++;
           }
         });
-        if (res.themeAdded) saveThemes();
+        if (addedThemes.length) {
+          await Promise.all(addedThemes.map(t => importThemeCovers(t)));
+          res.themeAdded = addedThemes.length;
+          saveThemes();
+        }
       }
     }
 
@@ -1509,7 +1535,7 @@
     try {
       localStorage.setItem(THEMES_KEY, JSON.stringify(themes));
     } catch (e) {
-      alert('主题保存失败：封面图太大，请减少封面数量或压缩图片');
+      alert('主题保存失败：本地存储空间不足');
     }
   }
   function getTheme(id) {
@@ -1622,41 +1648,194 @@
   const FONT_STORE = 'files';
   const FONT_ITEM_KEY = 'customFont';
 
-  function idbOpen() {
+  // 封面图也挪到 IndexedDB：不再受 localStorage 5MB 的限制
+  const COVER_DB_NAME = 'novel_memo_covers';
+  const COVER_STORE = 'files';
+  // 封面 id → object URL（渲染用）
+  const coverUrls = {};
+
+  function idbOpen(dbName, storeName) {
     return new Promise((resolve, reject) => {
       if (!('indexedDB' in window)) { reject(new Error('no indexedDB')); return; }
-      const req = indexedDB.open(FONT_DB_NAME, 1);
+      const req = indexedDB.open(dbName, 1);
       req.onupgradeneeded = () => {
         const db = req.result;
-        if (!db.objectStoreNames.contains(FONT_STORE)) db.createObjectStore(FONT_STORE);
+        if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
   }
-  function idbPut(key, val) {
-    return idbOpen().then((db) => new Promise((resolve, reject) => {
-      const tx = db.transaction(FONT_STORE, 'readwrite');
-      tx.objectStore(FONT_STORE).put(val, key);
+  function idbPut(dbName, storeName, key, val) {
+    return idbOpen(dbName, storeName).then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).put(val, key);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     }));
   }
-  function idbGet(key) {
-    return idbOpen().then((db) => new Promise((resolve, reject) => {
-      const tx = db.transaction(FONT_STORE, 'readonly');
-      const r = tx.objectStore(FONT_STORE).get(key);
+  function idbGet(dbName, storeName, key) {
+    return idbOpen(dbName, storeName).then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const r = tx.objectStore(storeName).get(key);
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
     }));
   }
-  function idbDelete(key) {
-    return idbOpen().then((db) => new Promise((resolve, reject) => {
-      const tx = db.transaction(FONT_STORE, 'readwrite');
-      tx.objectStore(FONT_STORE).delete(key);
+  function idbDelete(dbName, storeName, key) {
+    return idbOpen(dbName, storeName).then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).delete(key);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     }));
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const parts = String(dataUrl).split(',');
+    const mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/png';
+    const bin = atob(parts[1]);
+    const len = bin.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+
+  function coverId() {
+    return 'cov_' + makeId();
+  }
+
+  // 取一张封面的可渲染 URL（object URL，或还没迁移完的 dataURL）
+  function coverUrlOf(c) {
+    if (!c) return '';
+    if (typeof c === 'string' && c.startsWith('data:')) return c;
+    return coverUrls[c] || '';
+  }
+
+  function removeCover(id) {
+    if (coverUrls[id]) {
+      try { URL.revokeObjectURL(coverUrls[id]); } catch (e) {}
+      delete coverUrls[id];
+    }
+    idbDelete(COVER_DB_NAME, COVER_STORE, id).catch(() => {});
+  }
+
+  // 老数据迁移：封面原来以 dataURL 存在 localStorage，搬到 IndexedDB
+  async function migrateThemeCovers() {
+    let changed = false;
+    for (const t of themes) {
+      if (!Array.isArray(t.covers) || t.covers.length === 0) continue;
+      const newCovers = [];
+      for (const c of t.covers) {
+        if (typeof c === 'string' && c.startsWith('data:')) {
+          try {
+            const blob = dataUrlToBlob(c);
+            const id = coverId();
+            await idbPut(COVER_DB_NAME, COVER_STORE, id, blob);
+            coverUrls[id] = URL.createObjectURL(blob);
+            newCovers.push(id);
+            changed = true;
+          } catch (e) {
+            newCovers.push(c); // 存不进 IDB 就暂时保留原样
+          }
+        } else if (c) {
+          newCovers.push(c);
+        }
+      }
+      t.covers = newCovers;
+    }
+    if (changed) saveThemes();
+  }
+
+  // 把 IndexedDB 里的封面全部读出来，生成渲染用的 object URL
+  async function loadAllCovers() {
+    for (const t of themes) {
+      for (const c of (t.covers || [])) {
+        if (typeof c !== 'string' || c.startsWith('data:') || coverUrls[c]) continue;
+        try {
+          const blob = await idbGet(COVER_DB_NAME, COVER_STORE, c);
+          if (blob) coverUrls[c] = URL.createObjectURL(blob);
+        } catch (e) {}
+      }
+    }
+  }
+
+  // 从备份恢复时：把主题里的 dataURL 封面转存到 IndexedDB
+  async function importThemeCovers(theme) {
+    if (!theme || !Array.isArray(theme.covers)) return;
+    const newCovers = [];
+    for (const c of theme.covers) {
+      if (typeof c === 'string' && c.startsWith('data:')) {
+        try {
+          const blob = dataUrlToBlob(c);
+          const id = coverId();
+          await idbPut(COVER_DB_NAME, COVER_STORE, id, blob);
+          coverUrls[id] = URL.createObjectURL(blob);
+          newCovers.push(id);
+        } catch (e) {
+          newCovers.push(c); // 存不进 IDB 就先用原图
+        }
+      } else if (c) {
+        newCovers.push(c);
+      }
+    }
+    theme.covers = newCovers;
+  }
+
+  // 兜底：无论什么来源都转成 dataURL
+  function toDataUrlFallback(src) {
+    if (typeof src === 'string' && src.startsWith('data:')) return Promise.resolve(src);
+    return fetch(src).then(r => r.blob()).then(blobToDataUrl).catch(() => src);
+  }
+
+  // 把图片缩到 600px 宽以内、压成 ≤300KB 的 JPEG，返回 dataURL。
+  // 600px 足够列表封面（最大 200px）在高分屏上清晰显示。
+  function compressImageSource(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const iw = img.naturalWidth || 0;
+          const ih = img.naturalHeight || 0;
+          if (!iw || !ih) { toDataUrlFallback(url).then(resolve); return; }
+          const MAX_W = 600;
+          let w = iw, h = ih;
+          if (w > MAX_W) { h = Math.max(1, Math.round(h * MAX_W / w)); w = MAX_W; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          const encode = (q) => new Promise(r => canvas.toBlob(b => r(b || new Blob([], { type: 'image/jpeg' })), 'image/jpeg', q));
+          let q = 0.9;
+          encode(q).then(blob => {
+            const next = (b) => {
+              if (b && b.size > 300 * 1024 && q > 0.4) {
+                q -= 0.1;
+                encode(q).then(next);
+                return;
+              }
+              blobToDataUrl(b).then(resolve);
+            };
+            next(blob);
+          });
+        } catch (e) {
+          toDataUrlFallback(url).then(resolve);
+        }
+      };
+      img.onerror = () => { toDataUrlFallback(url).then(resolve); };
+      img.src = url;
+    });
   }
 
   let currentFontUrl = '';
@@ -1712,13 +1891,13 @@
     }
     const url = URL.createObjectURL(file);
     applyCustomFontUrl(url, file.name);
-    idbPut(FONT_ITEM_KEY, { blob: file, name: file.name }).catch(() => {
+    idbPut(FONT_DB_NAME, FONT_STORE, FONT_ITEM_KEY, { blob: file, name: file.name }).catch(() => {
       alert('字体保存失败，刷新后可能需要重新选择');
     });
   }
 
   function loadCustomFontFromStorage() {
-    return idbGet(FONT_ITEM_KEY).then((obj) => {
+    return idbGet(FONT_DB_NAME, FONT_STORE, FONT_ITEM_KEY).then((obj) => {
       if (!obj || !obj.blob) return;
       const url = URL.createObjectURL(obj.blob);
       applyCustomFontUrl(url, obj.name);
@@ -1915,7 +2094,7 @@
     const theme = getTheme(settings.activeThemeId);
     if (!theme || !theme.covers || theme.covers.length === 0) return coverMap;
     shownRecords.forEach((r, i) => {
-      coverMap[r.id] = theme.covers[i % theme.covers.length];
+      coverMap[r.id] = coverUrlOf(theme.covers[i % theme.covers.length]);
     });
     return coverMap;
   }
@@ -2242,9 +2421,10 @@
       return;
     }
     $themeList.innerHTML = themes.map(t => {
-      const coverThumbs = (t.covers || []).map((c, i) =>
-        `<div class="theme-cover-thumb"><img src="${esc(c)}" alt="封面${i+1}"><button class="cover-del" data-theme-id="${t.id}" data-idx="${i}" title="删除这张">×</button></div>`
-      ).join('');
+      const coverThumbs = (t.covers || []).map((c, i) => {
+        const url = coverUrlOf(c);
+        return `<div class="theme-cover-thumb">` + (url ? `<img src="${esc(url)}" alt="封面${i+1}">` : '') + `<button class="cover-del" data-theme-id="${t.id}" data-idx="${i}" title="删除这张">×</button></div>`;
+      }).join('');
       const isActive = settings.activeThemeId === t.id;
       return `
         <div class="theme-item" data-theme-id="${t.id}">
@@ -2281,28 +2461,29 @@
     if (!theme) return;
     const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (validFiles.length === 0) { alert('请选择图片文件'); return; }
-    let loaded = 0;
+    let done = 0;
     validFiles.forEach(f => {
-      if (f.size > 800 * 1024) {
-        alert(`「${f.name}」超过 800KB，已跳过`);
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        theme.covers.push(e.target.result);
-        loaded++;
-        if (loaded === validFiles.length) {
+      const srcUrl = URL.createObjectURL(f);
+      compressImageSource(srcUrl).then(dataUrl => {
+        URL.revokeObjectURL(srcUrl);
+        if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return;
+        const blob = dataUrlToBlob(dataUrl);
+        const id = coverId();
+        theme.covers.push(id);
+        return idbPut(COVER_DB_NAME, COVER_STORE, id, blob).then(() => {
+          coverUrls[id] = URL.createObjectURL(blob);
+        }).catch(() => {
+          coverUrls[id] = dataUrl; // IDB 存不了也先显示出来
+        });
+      }).catch(() => {}).then(() => {
+        done++;
+        if (done === validFiles.length) {
           saveThemes();
           renderThemes();
           render();
         }
-      };
-      reader.readAsDataURL(f);
+      });
     });
-    if (validFiles.length === 0) return;
-    saveThemes();
-    renderThemes();
-    render();
   }
 
   function parseImportText(text) {
@@ -2408,43 +2589,46 @@
       $ioResult.style.color = '#be6e6e';
       return;
     }
-    const data = JSON.stringify(buildBackup(), null, 2);
 
-    if (isLikelyWebView()) {
-      copyTextToClipboard(data).then(() => {
-        hideBackupText();
-        $ioResult.textContent = '已在 App 内复制备份（' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '）';
-        $ioResult.style.color = '#4a9e7b';
-      }).catch(() => {
-        showBackupText(data);
-        $ioResult.textContent = '自动复制失败，请长按下方文本手动全选复制';
-        $ioResult.style.color = '#be6e6e';
-      });
-      return;
-    }
+    buildBackup().then(backup => {
+      const data = JSON.stringify(backup, null, 2);
 
-    try {
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = '小说备忘录备份_' + new Date().toISOString().slice(0,10) + '.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 3000);
-      $ioResult.textContent = '已导出 ' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '');
-      $ioResult.style.color = '#4a9e7b';
-    } catch (e) {
-      copyTextToClipboard(data).then(() => {
-        $ioResult.textContent = '下载不可用，已改为复制到剪贴板';
+      if (isLikelyWebView()) {
+        copyTextToClipboard(data).then(() => {
+          hideBackupText();
+          $ioResult.textContent = '已在 App 内复制备份（' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '）';
+          $ioResult.style.color = '#4a9e7b';
+        }).catch(() => {
+          showBackupText(data);
+          $ioResult.textContent = '自动复制失败，请长按下方文本手动全选复制';
+          $ioResult.style.color = '#be6e6e';
+        });
+        return;
+      }
+
+      try {
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '小说备忘录备份_' + new Date().toISOString().slice(0,10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        $ioResult.textContent = '已导出 ' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '');
         $ioResult.style.color = '#4a9e7b';
-      }).catch(() => {
-        showBackupText(data);
-        $ioResult.textContent = '导出失败，请长按下方文本手动复制';
-        $ioResult.style.color = '#be6e6e';
-      });
-    }
+      } catch (e) {
+        copyTextToClipboard(data).then(() => {
+          $ioResult.textContent = '下载不可用，已改为复制到剪贴板';
+          $ioResult.style.color = '#4a9e7b';
+        }).catch(() => {
+          showBackupText(data);
+          $ioResult.textContent = '导出失败，请长按下方文本手动复制';
+          $ioResult.style.color = '#be6e6e';
+        });
+      }
+    });
   }
 
   function handleCopyBackup() {
@@ -2453,15 +2637,17 @@
       $ioResult.style.color = '#be6e6e';
       return;
     }
-    const data = JSON.stringify(buildBackup(), null, 2);
-    copyTextToClipboard(data).then(() => {
-      hideBackupText();
-      $ioResult.textContent = '已复制备份（' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '）';
-      $ioResult.style.color = '#4a9e7b';
-    }).catch(() => {
-      showBackupText(data);
-      $ioResult.textContent = '自动复制失败，请长按下方文本手动全选复制';
-      $ioResult.style.color = '#be6e6e';
+    buildBackup().then(backup => {
+      const data = JSON.stringify(backup, null, 2);
+      copyTextToClipboard(data).then(() => {
+        hideBackupText();
+        $ioResult.textContent = '已复制备份（' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '）';
+        $ioResult.style.color = '#4a9e7b';
+      }).catch(() => {
+        showBackupText(data);
+        $ioResult.textContent = '自动复制失败，请长按下方文本手动全选复制';
+        $ioResult.style.color = '#be6e6e';
+      });
     });
   }
 
@@ -2523,44 +2709,47 @@
       return;
     }
     const repo = (settings.gistId || '').trim() || BACKUP_REPO_DEFAULT;
-    const content = JSON.stringify(buildBackup(), null, 2);
-    let encoded;
-    try {
-      encoded = btoa(unescape(encodeURIComponent(content)));
-    } catch (e) {
-      setGistResult('备份内容编码失败', false);
-      return;
-    }
-    setGistResult('正在上传…', null);
+    setGistResult('正在准备备份…', null);
 
-    const apiPath = '/repos/' + BACKUP_REPO_OWNER + '/' + repo + '/contents/' + BACKUP_FILE_PATH;
+    buildBackup().then(backup => {
+      const content = JSON.stringify(backup, null, 2);
+      let encoded;
+      try {
+        encoded = btoa(unescape(encodeURIComponent(content)));
+      } catch (e) {
+        setGistResult('备份内容编码失败', false);
+        return;
+      }
+      setGistResult('正在上传…', null);
 
-    // 先看看文件在不在（在的话要带 sha 才能更新）
-    ghRequest('GET', apiPath, token)
-      .then((file) => ghRequest('PUT', apiPath, token, {
-        message: '备份 ' + new Date().toISOString(),
-        content: encoded,
-        sha: file.sha
-      }))
-      .catch((err) => {
-        // 文件不存在（404）→ 直接创建
-        if (err && err.status === 404) {
-          return ghRequest('PUT', apiPath, token, {
-            message: '备份 ' + new Date().toISOString(),
-            content: encoded
-          });
-        }
-        throw err;
-      })
-      .then(() => {
-        settings.gistId = repo;
-        saveSettings();
-        updateGistHint();
-        setGistResult('上传成功：' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '\n仓库：' + BACKUP_REPO_OWNER + '/' + repo, true);
-      })
-      .catch((e) => {
-        setGistResult('上传失败：' + e.message, false);
-      });
+      const apiPath = '/repos/' + BACKUP_REPO_OWNER + '/' + repo + '/contents/' + BACKUP_FILE_PATH;
+
+      // 先看看文件在不在（在的话要带 sha 才能更新）
+      return ghRequest('GET', apiPath, token)
+        .then((file) => ghRequest('PUT', apiPath, token, {
+          message: '备份 ' + new Date().toISOString(),
+          content: encoded,
+          sha: file.sha
+        }))
+        .catch((err) => {
+          // 文件不存在（404）→ 直接创建
+          if (err && err.status === 404) {
+            return ghRequest('PUT', apiPath, token, {
+              message: '备份 ' + new Date().toISOString(),
+              content: encoded
+            });
+          }
+          throw err;
+        })
+        .then(() => {
+          settings.gistId = repo;
+          saveSettings();
+          updateGistHint();
+          setGistResult('上传成功：' + records.length + ' 条记录、' + categories.length + ' 个分类' + (themes.length ? '、' + themes.length + ' 个主题' : '') + '\n仓库：' + BACKUP_REPO_OWNER + '/' + repo, true);
+        });
+    }).catch((e) => {
+      setGistResult('上传失败：' + e.message, false);
+    });
   }
 
   function handleGistDownload() {
@@ -2574,7 +2763,7 @@
     const apiPath = '/repos/' + BACKUP_REPO_OWNER + '/' + repo + '/contents/' + BACKUP_FILE_PATH;
 
     ghRequest('GET', apiPath, token)
-      .then((file) => {
+      .then(async (file) => {
         if (!file || !file.content) throw new Error('仓库里没找到备份文件');
         const b64 = String(file.content).replace(/\n/g, '');
         let content;
@@ -2588,7 +2777,7 @@
         const bk = extractBackup(raw);
         if (!bk) throw new Error('备份格式不对');
 
-        const res = applyBackup(bk, mode);
+        const res = await applyBackup(bk, mode);
         renderFilterRow();
         renderCategories();
         renderThemes();
@@ -2607,13 +2796,17 @@
         const raw = JSON.parse(e.target.result);
         const bk = extractBackup(raw);
         if (!bk) throw new Error('格式不对');
-        const res = applyBackup(bk, settings.restoreMode || 'merge');
-        renderFilterRow();
-        renderCategories();
-        renderThemes();
-        render();
-        $ioResult.textContent = summarizeBackup(res);
-        $ioResult.style.color = '#4a9e7b';
+        applyBackup(bk, settings.restoreMode || 'merge').then((res) => {
+          renderFilterRow();
+          renderCategories();
+          renderThemes();
+          render();
+          $ioResult.textContent = summarizeBackup(res);
+          $ioResult.style.color = '#4a9e7b';
+        }).catch(() => {
+          $ioResult.textContent = '文件解析失败：不是有效的备份文件';
+          $ioResult.style.color = '#be6e6e';
+        });
       } catch (err) {
         $ioResult.textContent = '文件解析失败：不是有效的备份文件';
         $ioResult.style.color = '#be6e6e';
@@ -2930,7 +3123,7 @@
   });
   document.getElementById('btn-font-remove').addEventListener('click', () => {
     clearCustomFont();
-    idbDelete(FONT_ITEM_KEY).catch(() => {});
+    idbDelete(FONT_DB_NAME, FONT_STORE, FONT_ITEM_KEY).catch(() => {});
   });
 
   document.getElementById('btn-new-category').addEventListener('click', () => {
@@ -3088,7 +3281,9 @@
       const cTheme = getTheme(cTid);
       if (!cTheme) return;
       if (!confirm('删除这张封面？')) return;
+      const cCover = cTheme.covers[cIdx];
       cTheme.covers.splice(cIdx, 1);
+      if (typeof cCover === 'string' && !cCover.startsWith('data:')) removeCover(cCover);
       saveThemes();
       renderThemes();
       render();
@@ -3102,6 +3297,9 @@
       if (!theme) return;
       if (!confirm(`删除主题「${theme.name}」？`)) return;
       themes = themes.filter(t => t.id !== tid);
+      (theme.covers || []).forEach(c => {
+        if (typeof c === 'string' && !c.startsWith('data:')) removeCover(c);
+      });
       if (settings.activeThemeId === tid) settings.activeThemeId = '';
       saveThemes();
       saveSettings();
@@ -3285,6 +3483,9 @@
   renderSortMenu();
   renderRestoreModePicker();
   render();
+
+  // 老封面从 localStorage 搬到 IndexedDB，然后把封面 URL 都备好再刷一次列表
+  migrateThemeCovers().then(() => loadAllCovers()).then(() => render()).catch(() => {});
 
   if (document.readyState === 'complete') {
     injectAppFont();
