@@ -169,7 +169,7 @@
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
-    min-width: 190px;
+    width: min(94vw, 400px);
     background: var(--sheet-glass);
     border: 1px solid var(--card-border);
     border-radius: 14px;
@@ -180,7 +180,21 @@
     max-height: 62vh;
     overflow-y: auto;
   }
-  .sort-menu.show { display: block; }
+  .sort-menu.show {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 8px;
+  }
+  .sort-menu.show::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    bottom: 12px;
+    width: 1px;
+    background: var(--line);
+    pointer-events: none;
+  }
   .sort-menu::-webkit-scrollbar { display: none; }
   .sort-menu button {
     display: block;
