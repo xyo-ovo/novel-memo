@@ -22,55 +22,9 @@ jobs:
           s = io.open(p, encoding='utf-8').read()
           n = len(s)
 
-          old = """  .sort-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    min-width: 190px;
-    background: var(--sheet-glass);
-    border: 1px solid var(--card-border);
-    border-radius: 14px;
-    box-shadow: 0 12px 34px rgba(30,40,50,.18);
-    padding: 6px;
-    display: none;
-    z-index: 40;
-    max-height: 62vh;
-    overflow-y: auto;
-  }
-  .sort-menu.show { display: block; }
-"""
+          old = "  .sort-menu {\n    position: absolute;\n    right: 0;\n    top: calc(100% + 6px);\n    min-width: 190px;\n    background: var(--sheet-glass);\n    border: 1px solid var(--card-border);\n    border-radius: 14px;\n    box-shadow: 0 12px 34px rgba(30,40,50,.18);\n    padding: 6px;\n    display: none;\n    z-index: 40;\n    max-height: 62vh;\n    overflow-y: auto;\n  }\n  .sort-menu.show { display: block; }\n"
 
-          new = """  .sort-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    width: min(94vw, 400px);
-    background: var(--sheet-glass);
-    border: 1px solid var(--card-border);
-    border-radius: 14px;
-    box-shadow: 0 12px 34px rgba(30,40,50,.18);
-    padding: 6px;
-    display: none;
-    z-index: 40;
-    max-height: 62vh;
-    overflow-y: auto;
-  }
-  .sort-menu.show {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 8px;
-  }
-  .sort-menu.show::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 12px;
-    bottom: 12px;
-    width: 1px;
-    background: var(--line);
-    pointer-events: none;
-  }
-"""
+          new = "  .sort-menu {\n    position: absolute;\n    right: 0;\n    top: calc(100% + 6px);\n    width: min(94vw, 400px);\n    background: var(--sheet-glass);\n    border: 1px solid var(--card-border);\n    border-radius: 14px;\n    box-shadow: 0 12px 34px rgba(30,40,50,.18);\n    padding: 6px;\n    display: none;\n    z-index: 40;\n    max-height: 62vh;\n    overflow-y: auto;\n  }\n  .sort-menu.show {\n    display: grid;\n    grid-template-columns: 1fr 1fr;\n    column-gap: 8px;\n  }\n  .sort-menu.show::before {\n    content: '';\n    position: absolute;\n    left: 50%;\n    top: 12px;\n    bottom: 12px;\n    width: 1px;\n    background: var(--line);\n    pointer-events: none;\n  }\n"
 
           c = s.count(old)
           print('count=%d want=1' % c)
