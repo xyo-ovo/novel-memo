@@ -3510,7 +3510,7 @@
       if (document.getElementById('app-font-style')) return;
       const styleEl = document.createElement('style');
       styleEl.id = 'app-font-style';
-      styleEl.textContent = "@font-face { font-family: 'AppFont'; src: url('font-subset.woff2') format('woff2'); font-weight: normal; font-style: normal; font-display: swap; }";
+      styleEl.textContent = "@font-face { font-family: 'AppFont'; src: url('font.ttf') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }";
       document.head.appendChild(styleEl);
     } catch (e) {}
   }
