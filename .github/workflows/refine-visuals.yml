@@ -1,0 +1,59 @@
+name: refine-visuals
+
+on:
+  push:
+    paths:
+      - '.github/workflows/refine-visuals.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Airy cards, spring easing, subtle texture
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          reps = [
+              # 11) 背景加一层极淡斜纹
+              ("  body {\n    display: flex;\n    justify-content: center;\n    background-image:\n      radial-gradient(125% 78% at 8% -14%, var(--glow1), transparent 62%),\n      radial-gradient(105% 66% at 104% 6%, var(--glow2), transparent 60%);\n    background-repeat: no-repeat;\n  }\n",
+               "  body {\n    display: flex;\n    justify-content: center;\n    background-image:\n      repeating-linear-gradient(45deg, rgba(0,0,0,.012) 0 1px, transparent 1px 9px),\n      radial-gradient(125% 78% at 8% -14%, var(--glow1), transparent 62%),\n      radial-gradient(105% 66% at 104% 6%, var(--glow2), transparent 60%);\n    background-repeat: repeat, no-repeat, no-repeat;\n  }\n"),
+
+              # 4) 卡片隐形化 + 7) 弹性缓动
+              ("    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--shadow-card);\n    border: 1px solid var(--card-border);\n    transition: transform .12s, background .12s;\n",
+               "    box-shadow: 0 1px 2px rgba(35,45,55,.03), 0 3px 10px rgba(35,45,55,.04);\n    border: 1px solid rgba(0,0,0,.04);\n    transition: transform .18s cubic-bezier(.32,.72,.28,1), background .18s cubic-bezier(.32,.72,.28,1);\n"),
+          ]
+
+          bad = False
+          for i, (old, new) in enumerate(reps, 1):
+              c = s.count(old)
+              print('rep%d count=%d want=1' % (i, c))
+              if c != 1:
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "style: airy card, spring easing, subtle bg texture"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/refine-visuals.yml
+          git commit -m "chore: remove refine visuals workflow"
+          git push origin HEAD:main
