@@ -1,0 +1,63 @@
+name: collapse-theme-covers
+
+on:
+  push:
+    paths:
+      - '.github/workflows/collapse-theme-covers.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collapse theme covers by default
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          reps = [
+              # 1) 封面区默认收起，展开时显示；名字可点
+              ("  .theme-covers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }\n",
+               "  .theme-covers { display: none; flex-wrap: wrap; gap: 8px; margin-top: 10px; }\n  .theme-item.expanded .theme-covers { display: flex; }\n  .theme-item-head .name { cursor: pointer; }\n"),
+
+              # 2) 模板里给主题名加开关标记 + 小箭头
+              ('            <span class="name">${esc(t.name)} <span style="color:#8b98a3;font-weight:400;font-size:11px;">${t.covers.length} 张封面</span></span>\n',
+               '            <span class="name" data-toggle-covers="1">${esc(t.name)} <span style="color:#8b98a3;font-weight:400;font-size:11px;">${t.covers.length} 张封面</span> <span style="color:#8b98a3;font-weight:400;">▾</span></span>\n'),
+
+              # 3) 事件：点名字切换展开
+              ("  $themeList.addEventListener('click', (e) => {\n    // 单张封面删除\n",
+               "  $themeList.addEventListener('click', (e) => {\n    // 点主题名展开 / 收起封面区\n    const toggleEl = e.target.closest('[data-toggle-covers]');\n    if (toggleEl) {\n      const tItem = toggleEl.closest('.theme-item');\n      if (tItem) tItem.classList.toggle('expanded');\n      return;\n    }\n    // 单张封面删除\n"),
+          ]
+
+          bad = False
+          for i, (old, new) in enumerate(reps, 1):
+              c = s.count(old)
+              print('rep%d count=%d want=1' % (i, c))
+              if c != 1:
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "style: collapse theme covers by default (tap name to expand)"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/collapse-theme-covers.yml
+          git commit -m "chore: remove collapse-covers workflow"
+          git push origin HEAD:main
