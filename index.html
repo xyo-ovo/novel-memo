@@ -3532,10 +3532,10 @@
   renderFilterRow();
   renderSortMenu();
   renderRestoreModePicker();
-  render();
 
-  // 老封面从 localStorage 搬到 IndexedDB，然后把封面 URL 都备好再刷一次列表
-  migrateThemeCovers().then(() => loadAllCovers()).then(() => render()).catch(() => {});
+  // 老封面从 localStorage 搬到 IndexedDB，封面 URL 都备好后再首次渲染，
+  // 避免「先无封面、后有封面」的跳变
+  migrateThemeCovers().then(() => loadAllCovers()).then(() => render()).catch(() => render());
 
   if (document.readyState === 'complete') {
     injectAppFont();
