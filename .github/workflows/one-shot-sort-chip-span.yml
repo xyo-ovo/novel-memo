@@ -1,0 +1,61 @@
+name: one-shot-sort-chip-span
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-sort-chip-span.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sort chip background on inner span
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          css_old = "    width: fit-content;\n    justify-self: start;\n    text-align: left;\n    height: 40px;\n    padding: 0 12px;\n    border: none;\n    background: transparent;\n    color: var(--text);\n    font-size: 13px;\n    border-radius: 9px;\n    cursor: pointer;\n    white-space: nowrap;\n    transition: background .12s;\n  }\n  .sort-menu button:active { background: var(--glass-active); }\n  .sort-menu button.active { color: var(--accent); font-weight: 600; background: var(--accent-soft); }\n"
+
+          css_new = "    text-align: left;\n    height: 40px;\n    padding: 0;\n    border: none;\n    background: transparent;\n    color: var(--text);\n    font-size: 13px;\n    cursor: pointer;\n    white-space: nowrap;\n  }\n  .sort-menu button span {\n    display: inline-block;\n    padding: 0 12px;\n    line-height: 40px;\n    border-radius: 9px;\n    transition: background .12s;\n  }\n  .sort-menu button:active span { background: var(--glass-active); }\n  .sort-menu button.active span { color: var(--accent); font-weight: 600; background: var(--accent-soft); }\n"
+
+          js_old = "'\">' + l + '</button>'"
+          js_new = "'\"><span>' + l + '</span></button>'"
+
+          reps = [
+              (css_old, css_new, 1),
+              (js_old, js_new, 1),
+          ]
+
+          bad = False
+          for i, (old, new, exp) in enumerate(reps, 1):
+              c = s.count(old)
+              print('rep%d count=%d want=%d' % (i, c, exp))
+              if c != exp:
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new, exp in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "fix: sort chip background on inner span so it hugs text"
+          git push origin HEAD:main
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/one-shot-sort-chip-span.yml
+          git commit -m "chore: remove one-shot sort chip span workflow"
+          git push origin HEAD:main
