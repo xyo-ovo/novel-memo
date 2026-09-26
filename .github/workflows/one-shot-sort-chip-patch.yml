@@ -1,0 +1,54 @@
+name: one-shot-sort-chip-patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-sort-chip-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sort chip fits text, narrow menu
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          reps = [
+              ("    width: min(94vw, 400px);\n", "    width: min(90vw, 360px);\n", 1),
+              ("  .sort-menu button {\n    display: block;\n    width: 100%;\n", "  .sort-menu button {\n    display: block;\n    width: fit-content;\n", 1),
+          ]
+
+          bad = False
+          for i, (old, new, exp) in enumerate(reps, 1):
+              c = s.count(old)
+              print('rep%d count=%d want=%d' % (i, c, exp))
+              if c != exp:
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new, exp in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "style: sort chips fit text, narrow menu"
+          git push origin HEAD:main
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/one-shot-sort-chip-patch.yml
+          git commit -m "chore: remove one-shot sort chip workflow"
+          git push origin HEAD:main
