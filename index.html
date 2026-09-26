@@ -169,7 +169,8 @@
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
-    width: min(90vw, 360px);
+    width: max-content;
+    max-width: min(92vw, 420px);
     background: var(--sheet-glass);
     border: 1px solid var(--card-border);
     border-radius: 14px;
@@ -182,7 +183,7 @@
   }
   .sort-menu.show {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: max-content max-content;
     column-gap: 8px;
   }
   .sort-menu.show::before {
