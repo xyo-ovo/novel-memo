@@ -1,0 +1,29 @@
+name: one-shot-title-patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-title-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply header patch
+        run: |
+          export LANG=C.UTF-8
+          sed -i 's|<title>小说备忘录</title>|<title>Reading Log</title>|; s|content="小说备忘录"|content="Reading Log"|; s|<h1>小说备忘录</h1>|<h1>Reading Log</h1>|; s|<div class="sub">Reading Log</div>|<div class="sub">Memo</div>|' index.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "chore: header title to English"
+          git push origin HEAD:main
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/one-shot-title-patch.yml
+          git commit -m "chore: remove one-shot workflow"
+          git push origin HEAD:main
