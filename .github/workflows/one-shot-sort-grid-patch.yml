@@ -1,0 +1,93 @@
+name: one-shot-sort-grid-patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-sort-grid-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sort menu two columns with divider
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          old = """  .sort-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 190px;
+    background: var(--sheet-glass);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 34px rgba(30,40,50,.18);
+    padding: 6px;
+    display: none;
+    z-index: 40;
+    max-height: 62vh;
+    overflow-y: auto;
+  }
+  .sort-menu.show { display: block; }
+"""
+
+          new = """  .sort-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    width: min(94vw, 400px);
+    background: var(--sheet-glass);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 34px rgba(30,40,50,.18);
+    padding: 6px;
+    display: none;
+    z-index: 40;
+    max-height: 62vh;
+    overflow-y: auto;
+  }
+  .sort-menu.show {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 8px;
+  }
+  .sort-menu.show::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    bottom: 12px;
+    width: 1px;
+    background: var(--line);
+    pointer-events: none;
+  }
+"""
+
+          c = s.count(old)
+          print('count=%d want=1' % c)
+          if c != 1:
+              sys.exit(1)
+
+          s = s.replace(old, new)
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "style: sort menu as two columns with center divider"
+          git push origin HEAD:main
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/one-shot-sort-grid-patch.yml
+          git commit -m "chore: remove one-shot sort grid workflow"
+          git push origin HEAD:main
