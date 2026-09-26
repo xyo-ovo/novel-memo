@@ -76,10 +76,9 @@
     display: flex;
     justify-content: center;
     background-image:
-      repeating-linear-gradient(45deg, rgba(0,0,0,.012) 0 1px, transparent 1px 9px),
       radial-gradient(125% 78% at 8% -14%, var(--glow1), transparent 62%),
       radial-gradient(105% 66% at 104% 6%, var(--glow2), transparent 60%);
-    background-repeat: repeat, no-repeat, no-repeat;
+    background-repeat: no-repeat;
   }
   #app {
     width: min(100%, 560px);
@@ -286,9 +285,9 @@
     padding: 16px;
     margin-bottom: 12px;
     position: relative;
-    box-shadow: 0 1px 2px rgba(35,45,55,.03), 0 3px 10px rgba(35,45,55,.04);
-    border: 1px solid rgba(0,0,0,.04);
-    transition: transform .18s cubic-bezier(.32,.72,.28,1), background .18s cubic-bezier(.32,.72,.28,1);
+    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--shadow-card);
+    border: 1px solid var(--card-border);
+    transition: transform .12s, background .12s;
   }
   .card:active { transform: scale(.985); background: var(--card-press); }
 
