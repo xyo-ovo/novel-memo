@@ -79,7 +79,6 @@
       radial-gradient(125% 78% at 8% -14%, var(--glow1), transparent 62%),
       radial-gradient(105% 66% at 104% 6%, var(--glow2), transparent 60%);
     background-repeat: no-repeat;
-    background-attachment: fixed;
   }
   #app {
     width: min(100%, 560px);
@@ -114,8 +113,6 @@
     border-radius: 12px;
     border: 1px solid var(--card-border);
     background: var(--card-glass);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
     color: var(--text-sub);
     cursor: pointer;
     box-shadow: var(--shadow-card);
@@ -141,8 +138,6 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--card-border);
     background: var(--card-glass);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
     color: var(--text);
     padding: 0 14px 0 40px;
     font-size: calc(14px * var(--fs));
@@ -160,8 +155,6 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--card-border);
     background: var(--card-glass);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
     color: var(--text-sub);
     cursor: pointer;
     box-shadow: var(--shadow-card);
@@ -178,8 +171,6 @@
     top: calc(100% + 6px);
     min-width: 190px;
     background: var(--card-glass);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
     border: 1px solid var(--card-border);
     border-radius: 14px;
     box-shadow: 0 12px 34px rgba(30,40,50,.18);
@@ -274,8 +265,6 @@
   }
   .card {
     background: var(--card-glass);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
     border-radius: var(--radius);
     padding: 16px;
     margin-bottom: 12px;
@@ -452,8 +441,6 @@
     left: 12px; right: 12px;
     bottom: calc(14px + var(--safe-bottom));
     background: var(--card-glass);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
     border: 1px solid var(--card-border);
     border-radius: 16px;
     box-shadow: 0 10px 34px rgba(30,40,50,.20);
