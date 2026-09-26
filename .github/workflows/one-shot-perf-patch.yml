@@ -1,0 +1,72 @@
+name: one-shot-perf-patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-perf-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply performance patch
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          reps = [
+              ("    background-repeat: no-repeat;\n    background-attachment: fixed;\n",
+               "    background-repeat: no-repeat;\n"),
+
+              ("    width: 40px; height: 40px;\n    border-radius: 12px;\n    border: 1px solid var(--card-border);\n    background: var(--card-glass);\n    -webkit-backdrop-filter: blur(10px);\n    backdrop-filter: blur(10px);\n",
+               "    width: 40px; height: 40px;\n    border-radius: 12px;\n    border: 1px solid var(--card-border);\n    background: var(--card-glass);\n"),
+
+              ("    border: 1px solid var(--card-border);\n    background: var(--card-glass);\n    -webkit-backdrop-filter: blur(10px);\n    backdrop-filter: blur(10px);\n    color: var(--text);\n",
+               "    border: 1px solid var(--card-border);\n    background: var(--card-glass);\n    color: var(--text);\n"),
+
+              ("    height: 44px;\n    width: 44px;\n    border-radius: var(--radius-sm);\n    border: 1px solid var(--card-border);\n    background: var(--card-glass);\n    -webkit-backdrop-filter: blur(10px);\n    backdrop-filter: blur(10px);\n",
+               "    height: 44px;\n    width: 44px;\n    border-radius: var(--radius-sm);\n    border: 1px solid var(--card-border);\n    background: var(--card-glass);\n"),
+
+              ("    min-width: 190px;\n    background: var(--card-glass);\n    -webkit-backdrop-filter: blur(16px);\n    backdrop-filter: blur(16px);\n",
+               "    min-width: 190px;\n    background: var(--card-glass);\n"),
+
+              ("    bottom: calc(14px + var(--safe-bottom));\n    background: var(--card-glass);\n    -webkit-backdrop-filter: blur(16px);\n    backdrop-filter: blur(16px);\n",
+               "    bottom: calc(14px + var(--safe-bottom));\n    background: var(--card-glass);\n"),
+
+              ("  .card {\n    background: var(--card-glass);\n    -webkit-backdrop-filter: blur(10px);\n    backdrop-filter: blur(10px);\n    border-radius: var(--radius);\n",
+               "  .card {\n    background: var(--card-glass);\n    border-radius: var(--radius);\n"),
+          ]
+
+          bad = False
+          for old, new in reps:
+              c = s.count(old)
+              if c != 1:
+                  print('rep count=%d for %r' % (c, old[:80]))
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('OK: %d -> %d bytes, blur left = %d' % (n, len(s), s.count('backdrop-filter')))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "perf: remove backdrop-filter on list UI and fixed background"
+          git push origin HEAD:main
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/one-shot-perf-patch.yml
+          git commit -m "chore: remove one-shot perf workflow"
+          git push origin HEAD:main
