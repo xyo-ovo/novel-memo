@@ -1,0 +1,62 @@
+name: swap-themes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/swap-themes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swap two similar themes for distinct ones
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+          lines = s.split('\n')
+
+          grape = "    grape: { bg:'#f8f5fa', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.97)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(146,136,158,.55)', 'accent-glass':'rgba(123,94,158,.13)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(201,122,53,.15)', 'wishlist-glass':'rgba(146,136,158,.16)', glow1:'rgba(123,94,158,.13)', glow2:'rgba(160,120,190,.10)', text:'#2e2738', 'text-sub':'#655c73', 'text-dim':'#968ca3', line:'#e8e0ee', accent:'#7b5e9e', 'accent-strong':'#654b85', 'accent-soft':'#f2ecf7', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },"
+          celadon = "    celadon: { bg:'#f4f9f8', card:'#ffffff', 'card-glass':'rgba(255,255,255,.52)', 'card-border':'rgba(255,255,255,.62)', 'card-press':'rgba(255,255,255,.72)', 'glass-active':'rgba(255,255,255,.78)', 'glass-highlight':'rgba(255,255,255,.85)', 'sheet-bg':'#ffffff', 'sheet-glass':'rgba(255,255,255,.97)', 'field-bg':'#fafbfc', 'btn-soft-bg':'#ffffff', 'scroll-thumb':'rgba(130,150,148,.55)', 'accent-glass':'rgba(61,139,138,.13)', 'green-glass':'rgba(74,158,123,.16)', 'blue-glass':'rgba(74,130,190,.14)', 'orange-glass':'rgba(201,122,53,.15)', 'wishlist-glass':'rgba(130,150,148,.16)', glow1:'rgba(61,139,138,.13)', glow2:'rgba(90,170,160,.10)', text:'#233330', 'text-sub':'#5b6b68', 'text-dim':'#8a9c99', line:'#ddeae8', accent:'#3d8b8a', 'accent-strong':'#2f706f', 'accent-soft':'#e8f3f2', blue:'#4a82be', 'blue-soft':'#eaf1f8', green:'#4a9e7b', 'green-soft':'#e9f3ee', red:'#be6e6e', 'red-soft':'#f8eaea', orange:'#c97a35', 'orange-soft':'#fbeee1', gold:'#c99a3b' },"
+
+          btn_grape = '        <button class="color-swatch" data-color-theme="grape" title="葡萄"><span class="dot" style="background:#7b5e9e"></span>葡萄</button>'
+          btn_celadon = '        <button class="color-swatch" data-color-theme="celadon" title="青瓷"><span class="dot" style="background:#3d8b8a"></span>青瓷</button>'
+
+          hit = {'mocha': 0, 'ink': 0}
+          for i, l in enumerate(lines):
+              if l.startswith('    mocha: {'):
+                  lines[i] = grape
+                  hit['mocha'] += 1
+              elif l.startswith('    ink: {'):
+                  lines[i] = celadon
+                  hit['ink'] += 1
+              elif 'data-color-theme="mocha"' in l:
+                  lines[i] = btn_grape
+              elif 'data-color-theme="ink"' in l:
+                  lines[i] = btn_celadon
+
+          print('theme hits:', hit)
+          if hit['mocha'] != 1 or hit['ink'] != 1:
+              sys.exit(1)
+
+          s = '\n'.join(lines)
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "style: swap mocha/ink for distinct grape/celadon themes"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/swap-themes.yml
+          git commit -m "chore: remove swap themes workflow"
+          git push origin HEAD:main
