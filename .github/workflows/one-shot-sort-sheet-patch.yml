@@ -44,8 +44,8 @@ jobs:
               ("    } else if (sortMode === 'rating') {\n      sorted.sort((a, b) => {\n        const c = (b.rating || 0) - (a.rating || 0);\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n    } else if (sortMode === 'words') {\n",
                "    } else if (sortMode === 'words') {\n", 1),
 
-              ("    } else if (sortMode === 'title') {\n      sorted.sort((a, b) => {\n        const c = (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN', { numeric: true });\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n",
-               "    } else if (sortMode === 'title') {\n      sorted.sort((a, b) => {\n        const c = (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN', { numeric: true });\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n    } else if (sortMode === 'title_desc') {\n      sorted.sort((a, b) => {\n        const c = (b.title || '').localeCompare(a.title || '', 'zh-Hans-CN', { numeric: true });\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n", 1),
+              ("    if (sortMode === 'title') {\n      sorted.sort((a, b) => {\n        const c = (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN', { numeric: true });\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n",
+               "    if (sortMode === 'title') {\n      sorted.sort((a, b) => {\n        const c = (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN', { numeric: true });\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n    } else if (sortMode === 'title_desc') {\n      sorted.sort((a, b) => {\n        const c = (b.title || '').localeCompare(a.title || '', 'zh-Hans-CN', { numeric: true });\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n", 1),
 
               ("    } else if (sortMode === 'hours') {\n      sorted.sort((a, b) => {\n        const c = (b.readingHours ?? -1) - (a.readingHours ?? -1);\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n",
                "    } else if (sortMode === 'hours') {\n      sorted.sort((a, b) => {\n        const c = (b.readingHours ?? -1) - (a.readingHours ?? -1);\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n    } else if (sortMode === 'hours_asc') {\n      sorted.sort((a, b) => {\n        const c = (a.readingHours ?? -1) - (b.readingHours ?? -1);\n        return c !== 0 ? c : compareByTimeDesc(a, b);\n      });\n", 1),
@@ -55,10 +55,9 @@ jobs:
           ]
 
           bad = False
-          for old, new, exp in reps:
+          for i, (old, new, exp) in enumerate(reps, 1):
               c = s.count(old)
-              okmark = 'OK' if c == exp else 'FAIL'
-              print('%s count=%d (want %d) %r' % (okmark, c, exp, old[:50]))
+              print('rep%d count=%d want=%d %s' % (i, c, exp, 'OK' if c == exp else 'FAIL'))
               if c != exp:
                   bad = True
           if bad:
