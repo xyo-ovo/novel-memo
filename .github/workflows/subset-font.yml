@@ -1,0 +1,36 @@
+name: subset-font
+
+on:
+  push:
+    paths:
+      - '.github/workflows/subset-font.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  subset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install fonttools
+        run: pip install --quiet fonttools brotli
+      - name: Subset font to woff2
+        run: |
+          ls -la font.ttf
+          pyftsubset font.ttf --output-file=font-subset.woff2 --flavor=woff2 --unicodes="U+0020-007E,U+00A0-00FF,U+2000-206F,U+2190-21FF,U+2460-24FF,U+25A0-25FF,U+2600-26FF,U+3000-303F,U+4E00-9FFF,U+FF00-FFEF" --layout-features='*' --no-hinting
+          ls -la font-subset.woff2
+      - name: Point page at new font
+        run: |
+          sed -i "s|url('font.ttf') format('truetype')|url('font-subset.woff2') format('woff2')|" index.html
+          grep -c "font-subset.woff2" index.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html font-subset.woff2
+          git commit -m "perf: subset font to woff2 (much smaller)"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/subset-font.yml
+          git commit -m "chore: remove font subset workflow"
+          git push origin HEAD:main
