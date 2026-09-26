@@ -1,0 +1,60 @@
+name: one-shot-search-shadow-patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-search-shadow-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply search debounce and shadow patch
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          reps = [
+              ("    --shadow-card: 0 1px 2px rgba(35,45,55,.03), 0 6px 24px rgba(35,45,55,.05);\n",
+               "    --shadow-card: 0 1px 2px rgba(35,45,55,.04), 0 4px 12px rgba(35,45,55,.05);\n"),
+
+              ("  $search.addEventListener('input', () => {\n    searchQuery = $search.value;\n    suppressAnim = true;\n    render();\n  });\n",
+               "  let searchTimer = null;\n  $search.addEventListener('input', () => {\n    searchQuery = $search.value;\n    suppressAnim = true;\n    clearTimeout(searchTimer);\n    if (!searchQuery.trim()) { render(); return; }\n    searchTimer = setTimeout(render, 150);\n  });\n"),
+          ]
+
+          bad = False
+          for old, new in reps:
+              c = s.count(old)
+              if c != 1:
+                  print('rep count=%d for %r' % (c, old[:80]))
+                  bad = True
+          if 'searchTimer' in s:
+              print('WARN: searchTimer already exists')
+              bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('OK: %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "perf: debounce search input and lighten card shadow"
+          git push origin HEAD:main
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/one-shot-search-shadow-patch.yml
+          git commit -m "chore: remove one-shot search/shadow workflow"
+          git push origin HEAD:main
