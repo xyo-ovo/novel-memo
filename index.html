@@ -515,8 +515,6 @@
     padding: 24px 22px 26px;
     transform: none;
     background: var(--sheet-glass);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
     border: 1px solid var(--card-border);
     box-shadow: 0 18px 60px rgba(30,40,50,.24);
   }
@@ -2259,11 +2257,6 @@
         (!r.category && splitTags(r.genre).indexOf(currentCategory) >= 0)
       );
     }
-    if (currentFilter === 'all') {
-      shown = shown.filter(r => r.status !== 'wishlist');
-    } else {
-      shown = shown.filter(r => r.status === currentFilter);
-    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       shown = shown.filter(r =>
@@ -2271,6 +2264,10 @@
         (r.author || '').toLowerCase().includes(q) ||
         (r.genre || '').toLowerCase().includes(q)
       );
+    } else if (currentFilter === 'all') {
+      shown = shown.filter(r => r.status !== 'wishlist');
+    } else {
+      shown = shown.filter(r => r.status === currentFilter);
     }
     shown = sortRecords(shown);
     const coverMap = assignCovers(shown);
