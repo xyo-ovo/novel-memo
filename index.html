@@ -2168,8 +2168,12 @@
   function compareByTimeAsc(a, b) {
     const at = readSortKey(a);
     const bt = readSortKey(b);
-    if (at === bt) return 0;
-    return at > bt ? 1 : -1;
+    if (at !== bt) return at > bt ? 1 : -1;
+    // 同一天时，先开始看的排前面（与降序一致）
+    const as = a.startDate ? (a.startDate + ' ' + (a.startTime || '00:00')) : (a.createdAt || '');
+    const bs = b.startDate ? (b.startDate + ' ' + (b.startTime || '00:00')) : (b.createdAt || '');
+    if (as === bs) return 0;
+    return as < bs ? -1 : 1;
   }
 
   function sortRecords(arr) {
