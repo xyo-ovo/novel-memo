@@ -1,0 +1,38 @@
+name: dump-backup-code
+
+on:
+  push:
+    paths:
+      - '.github/workflows/dump-backup-code.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dump backup related code
+        run: |
+          {
+            echo "=== grep hits ==="
+            grep -n "backup.json\|handleGistUpload\|handleGistDownload\|novel-memo-backup\|没找到备份\|恢复失败\|恢复成功\|上传成功\|GIST" index.html | head -60
+            echo ""
+            echo "=== handleGistUpload ==="
+            awk '/function handleGistUpload/,/^  \}$/' index.html
+            echo ""
+            echo "=== handleGistDownload ==="
+            awk '/function handleGistDownload/,/^  \}$/' index.html
+          } > dump.txt
+          wc -l dump.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dump.txt
+          git commit -m "chore: dump backup code for inspection"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/dump-backup-code.yml
+          git commit -m "chore: remove dump workflow"
+          git push origin HEAD:main
