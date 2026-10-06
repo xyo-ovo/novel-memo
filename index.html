@@ -2823,13 +2823,23 @@
 
     ghRequest('GET', apiPath, token)
       .then(async (file) => {
-        if (!file || !file.content) throw new Error('仓库里没找到备份文件');
-        const b64 = String(file.content).replace(/\n/g, '');
         let content;
-        try {
-          content = decodeURIComponent(escape(atob(b64)));
-        } catch (e) {
-          throw new Error('备份内容解码失败');
+        if (file && file.content && String(file.content).trim()) {
+          const b64 = String(file.content).replace(/\n/g, '');
+          try {
+            content = decodeURIComponent(escape(atob(b64)));
+          } catch (e) {
+            throw new Error('备份内容解码失败');
+          }
+        } else if (file) {
+          // 文件大于 1MB 时 GitHub 不直接返回 content，改用 raw 接口拉取（支持到 100MB）
+          const dl = await fetch('https://api.github.com' + apiPath, {
+            headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.raw' }
+          });
+          if (!dl.ok) throw new Error('下载备份失败（HTTP ' + dl.status + '）');
+          content = await dl.text();
+        } else {
+          throw new Error('仓库里没找到备份文件');
         }
         let raw;
         try { raw = JSON.parse(content); } catch (err) { throw new Error('备份内容不是有效 JSON'); }
