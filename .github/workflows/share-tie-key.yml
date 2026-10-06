@@ -1,0 +1,57 @@
+name: share-tie-key
+
+on:
+  push:
+    paths:
+      - '.github/workflows/share-tie-key.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Share tie-break helper in both directions
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          old = "  function compareByTimeDesc(a, b) {\n    const at = readSortKey(a);\n    const bt = readSortKey(b);\n    if (at !== bt) return at > bt ? -1 : 1;\n    // 读完时间一样时，按「开始阅读时间」排；没填开始日期就退回「录入时间」，早的在前\n    const as = a.startDate ? (a.startDate + ' ' + (a.startTime || '00:00')) : (a.createdAt || '');\n    const bs = b.startDate ? (b.startDate + ' ' + (b.startTime || '00:00')) : (b.createdAt || '');\n    if (as === bs) return 0;\n    return as < bs ? -1 : 1;\n  }\n"
+
+          new = "  // 同一天完成时，按「开始阅读时间」分先后（早的在前）；没填就退回「录入时间」\n  function tieStartKey(r) {\n    return r.startDate ? (r.startDate + ' ' + (r.startTime || '00:00')) : (r.createdAt || '');\n  }\n\n  function compareByTimeDesc(a, b) {\n    const at = readSortKey(a);\n    const bt = readSortKey(b);\n    if (at !== bt) return at > bt ? -1 : 1;\n    const as = tieStartKey(a);\n    const bs = tieStartKey(b);\n    if (as === bs) return 0;\n    return as < bs ? -1 : 1;\n  }\n"
+
+          c = s.count(old)
+          print('desc count=%d want=1' % c)
+          if c != 1:
+              sys.exit(1)
+          s = s.replace(old, new)
+
+          old2 = "  function compareByTimeAsc(a, b) {\n    const at = readSortKey(a);\n    const bt = readSortKey(b);\n    if (at !== bt) return at > bt ? 1 : -1;\n    // 同一天时，先开始看的排前面（与降序一致）\n    const as = a.startDate ? (a.startDate + ' ' + (a.startTime || '00:00')) : (a.createdAt || '');\n    const bs = b.startDate ? (b.startDate + ' ' + (b.startTime || '00:00')) : (b.createdAt || '');\n    if (as === bs) return 0;\n    return as < bs ? -1 : 1;\n  }\n"
+
+          new2 = "  function compareByTimeAsc(a, b) {\n    const at = readSortKey(a);\n    const bt = readSortKey(b);\n    if (at !== bt) return at > bt ? 1 : -1;\n    const as = tieStartKey(a);\n    const bs = tieStartKey(b);\n    if (as === bs) return 0;\n    return as < bs ? -1 : 1;\n  }\n"
+
+          c2 = s.count(old2)
+          print('asc count=%d want=1' % c2)
+          if c2 != 1:
+              sys.exit(1)
+          s = s.replace(old2, new2)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "refactor: share tie-break helper across both sort directions"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/share-tie-key.yml
+          git commit -m "chore: remove share-tie-key workflow"
+          git push origin HEAD:main
