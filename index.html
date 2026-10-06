@@ -2156,9 +2156,9 @@
     const at = readSortKey(a);
     const bt = readSortKey(b);
     if (at !== bt) return at > bt ? -1 : 1;
-    // 读完时间一样时，先开始看的排前面
-    const as = (a.startDate || '') + ' ' + (a.startTime || '00:00');
-    const bs = (b.startDate || '') + ' ' + (b.startTime || '00:00');
+    // 读完时间一样时，按「开始阅读时间」排；没填开始日期就退回「录入时间」，早的在前
+    const as = a.startDate ? (a.startDate + ' ' + (a.startTime || '00:00')) : (a.createdAt || '');
+    const bs = b.startDate ? (b.startDate + ' ' + (b.startTime || '00:00')) : (b.createdAt || '');
     if (as === bs) return 0;
     return as < bs ? -1 : 1;
   }
