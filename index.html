@@ -2153,13 +2153,17 @@
   }
 
   // 新的排前面
+  // 同一天完成时，按「开始阅读时间」分先后（早的在前）；没填就退回「录入时间」
+  function tieStartKey(r) {
+    return r.startDate ? (r.startDate + ' ' + (r.startTime || '00:00')) : (r.createdAt || '');
+  }
+
   function compareByTimeDesc(a, b) {
     const at = readSortKey(a);
     const bt = readSortKey(b);
     if (at !== bt) return at > bt ? -1 : 1;
-    // 读完时间一样时，按「开始阅读时间」排；没填开始日期就退回「录入时间」，早的在前
-    const as = a.startDate ? (a.startDate + ' ' + (a.startTime || '00:00')) : (a.createdAt || '');
-    const bs = b.startDate ? (b.startDate + ' ' + (b.startTime || '00:00')) : (b.createdAt || '');
+    const as = tieStartKey(a);
+    const bs = tieStartKey(b);
     if (as === bs) return 0;
     return as < bs ? -1 : 1;
   }
@@ -2169,9 +2173,8 @@
     const at = readSortKey(a);
     const bt = readSortKey(b);
     if (at !== bt) return at > bt ? 1 : -1;
-    // 同一天时，先开始看的排前面（与降序一致）
-    const as = a.startDate ? (a.startDate + ' ' + (a.startTime || '00:00')) : (a.createdAt || '');
-    const bs = b.startDate ? (b.startDate + ' ' + (b.startTime || '00:00')) : (b.createdAt || '');
+    const as = tieStartKey(a);
+    const bs = tieStartKey(b);
     if (as === bs) return 0;
     return as < bs ? -1 : 1;
   }
