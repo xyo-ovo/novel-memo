@@ -1,0 +1,48 @@
+name: fix-restore-large
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-restore-large.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore large backups via raw API
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          old = "        if (!file || !file.content) throw new Error('仓库里没找到备份文件');\n        const b64 = String(file.content).replace(/\\n/g, '');\n        let content;\n        try {\n          content = decodeURIComponent(escape(atob(b64)));\n        } catch (e) {\n          throw new Error('备份内容解码失败');\n        }\n"
+
+          new = "        let content;\n        if (file && file.content && String(file.content).trim()) {\n          const b64 = String(file.content).replace(/\\n/g, '');\n          try {\n            content = decodeURIComponent(escape(atob(b64)));\n          } catch (e) {\n            throw new Error('备份内容解码失败');\n          }\n        } else if (file) {\n          // 文件大于 1MB 时 GitHub 不直接返回 content，改用 raw 接口拉取（支持到 100MB）\n          const dl = await fetch('https://api.github.com' + apiPath, {\n            headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.raw' }\n          });\n          if (!dl.ok) throw new Error('下载备份失败（HTTP ' + dl.status + '）');\n          content = await dl.text();\n        } else {\n          throw new Error('仓库里没找到备份文件');\n        }\n"
+
+          c = s.count(old)
+          print('count=%d want=1' % c)
+          if c != 1:
+              sys.exit(1)
+
+          s = s.replace(old, new)
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "fix: restore backups larger than 1MB via raw API"
+          git push origin HEAD:main
+      - name: Cleanup dump and workflow
+        run: |
+          git rm -f dump.txt 2>/dev/null || true
+          git rm .github/workflows/fix-restore-large.yml
+          git commit -m "chore: cleanup dump and fix-restore workflow"
+          git push origin HEAD:main
