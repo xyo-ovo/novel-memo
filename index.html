@@ -2844,7 +2844,7 @@
         let raw;
         try { raw = JSON.parse(content); } catch (err) { throw new Error('备份内容不是有效 JSON'); }
         const bk = extractBackup(raw);
-        if (!bk) throw new Error('备份格式不对');
+        if (!bk) throw new Error('备份格式不对（拿到 ' + content.length + ' 字符，开头：' + content.slice(0, 100).replace(/\s+/g, ' ') + '）');
 
         const res = await applyBackup(bk, mode);
         renderFilterRow();
