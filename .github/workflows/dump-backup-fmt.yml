@@ -1,0 +1,38 @@
+name: dump-backup-fmt
+
+on:
+  push:
+    paths:
+      - '.github/workflows/dump-backup-fmt.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dump backup format code
+        run: |
+          {
+            echo "=== buildBackup ==="
+            awk '/function buildBackup/,/^  \}$/' index.html
+            echo ""
+            echo "=== extractBackup ==="
+            awk '/function extractBackup/,/^  \}$/' index.html
+            echo ""
+            echo "=== applyBackup signature ==="
+            grep -n "function applyBackup\|function summarizeBackup\|BACKUP_VERSION\|version" index.html | head -30
+          } > dump2.txt
+          wc -l dump2.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dump2.txt
+          git commit -m "chore: dump backup format code"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/dump-backup-fmt.yml
+          git commit -m "chore: remove dump2 workflow"
+          git push origin HEAD:main
