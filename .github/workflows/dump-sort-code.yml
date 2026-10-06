@@ -1,0 +1,47 @@
+name: dump-sort-code
+
+on:
+  push:
+    paths:
+      - '.github/workflows/dump-sort-code.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dump sort code
+        run: |
+          {
+            echo "=== compareByTimeDesc ==="
+            awk '/function compareByTimeDesc/,/^  \}$/' index.html
+            echo ""
+            echo "=== compareByTimeAsc ==="
+            awk '/function compareByTimeAsc/,/^  \}$/' index.html
+            echo ""
+            echo "=== readSortKey ==="
+            awk '/function readSortKey/,/^  \}$/' index.html
+            echo ""
+            echo "=== sortRecords ==="
+            awk '/function sortRecords/,/^  \}$/' index.html
+            echo ""
+            echo "=== card-time ==="
+            grep -n "card-time" index.html
+            echo ""
+            echo "=== cardTime / timeEl ==="
+            grep -n "cardTime\|card-time\"" index.html | head -20
+          } > dump3.txt
+          wc -l dump3.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dump3.txt
+          git commit -m "chore: dump sort code"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/dump-sort-code.yml
+          git commit -m "chore: remove dump3 workflow"
+          git push origin HEAD:main
