@@ -2162,10 +2162,11 @@
     const at = readSortKey(a);
     const bt = readSortKey(b);
     if (at !== bt) return at > bt ? -1 : 1;
+    // 同一天读完时，跟主方向一致：开始晚的在前
     const as = tieStartKey(a);
     const bs = tieStartKey(b);
     if (as === bs) return 0;
-    return as < bs ? -1 : 1;
+    return as > bs ? -1 : 1;
   }
 
   // 旧的排前面
