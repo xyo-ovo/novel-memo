@@ -2145,9 +2145,10 @@
   // 排序用的时间键：读完 → 开始 → 想读 → 创建时间
   // 注意用 createdAt 而不是 updatedAt，否则编辑一下就会跳到最前面
   function readSortKey(r) {
-    if (r.endDate) return r.endDate + ' ' + (r.endTime || '00:00');
-    if (r.startDate) return r.startDate + ' ' + (r.startTime || '00:00');
-    if (r.wishDate) return r.wishDate + ' 00:00';
+    // 只精确到「日」：同一天读完的书，再按「开始阅读日期」分先后
+    if (r.endDate) return r.endDate;
+    if (r.startDate) return r.startDate;
+    if (r.wishDate) return r.wishDate;
     return r.createdAt || '';
   }
 
