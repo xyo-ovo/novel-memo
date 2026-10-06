@@ -2155,8 +2155,12 @@
   function compareByTimeDesc(a, b) {
     const at = readSortKey(a);
     const bt = readSortKey(b);
-    if (at === bt) return 0;
-    return at > bt ? -1 : 1;
+    if (at !== bt) return at > bt ? -1 : 1;
+    // 读完时间一样时，先开始看的排前面
+    const as = (a.startDate || '') + ' ' + (a.startTime || '00:00');
+    const bs = (b.startDate || '') + ' ' + (b.startTime || '00:00');
+    if (as === bs) return 0;
+    return as < bs ? -1 : 1;
   }
 
   // 旧的排前面
