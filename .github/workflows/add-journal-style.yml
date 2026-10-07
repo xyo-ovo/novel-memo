@@ -1,0 +1,83 @@
+name: add-journal-style
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-journal-style.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add journal date style
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+          reps = []
+
+          # 1) 列表渲染前声明 journalLastYear
+          reps.append((
+            "    $list.innerHTML = shown.map(r => {\n      const meta = STATUS_META[r.status] || STATUS_META.reading;\n",
+            "    let journalLastYear = '';\n    $list.innerHTML = shown.map(r => {\n      const meta = STATUS_META[r.status] || STATUS_META.reading;\n",
+            1
+          ))
+
+          # 2) 返回模板：手账模式包一层 .tl-row
+          old_tpl = "      const startDisplay = formatStartTime(r);\n      return `\n        ${startDisplay ? `<div class=\"card-time\">${startDisplay}</div>` : ''}\n        <div class=\"card\" data-id=\"${r.id}\">\n          <div class=\"card-layout\">\n            ${coverHtml}\n            <div class=\"card-main\">\n              <div class=\"card-head\">\n                <div class=\"card-info\">\n                  <div class=\"card-title\">${esc(r.title)}</div>\n                  ${authorLine}\n                  ${tagsRow}\n                </div>\n                <span class=\"badge ${meta.cls}\">${meta.text}</span>\n              </div>\n              ${starRow}\n              ${notes}\n              ${metaLine}\n            </div>\n          </div>\n        </div>`;\n"
+
+          new_tpl = "      const startDisplay = formatStartTime(r);\n      const isJournal = settings.timeStyle === 'journal';\n      let journalHead = '';\n      let sideHtml = '';\n      if (isJournal && r.startDate) {\n        const jy = r.startDate.slice(0, 4);\n        const jm = parseInt(r.startDate.slice(5, 7), 10);\n        const jd = parseInt(r.startDate.slice(8, 10), 10);\n        if (jy !== journalLastYear) {\n          journalLastYear = jy;\n          journalHead = `<div class=\"tl-year\">${jy} 年</div>`;\n        }\n        sideHtml = `<div class=\"tl-side\"><span class=\"tl-month\">${jm}月</span><span class=\"tl-day\">${jd}</span></div>`;\n      }\n      return `\n        ${journalHead}\n        <div class=\"tl-row\">\n        ${sideHtml}\n        ${(!isJournal && startDisplay) ? `<div class=\"card-time\">${startDisplay}</div>` : ''}\n        <div class=\"card\" data-id=\"${r.id}\">\n          <div class=\"card-layout\">\n            ${coverHtml}\n            <div class=\"card-main\">\n              <div class=\"card-head\">\n                <div class=\"card-info\">\n                  <div class=\"card-title\">${esc(r.title)}</div>\n                  ${authorLine}\n                  ${tagsRow}\n                </div>\n                <span class=\"badge ${meta.cls}\">${meta.text}</span>\n              </div>\n              ${starRow}\n              ${notes}\n              ${metaLine}\n            </div>\n          </div>\n        </div>\n        </div>`;\n"
+
+          c2 = s.count(old_tpl)
+          print('tpl count=%d want=1' % c2)
+          if c2 != 1:
+              sys.exit(1)
+          s = s.replace(old_tpl, new_tpl)
+
+          # 3) CSS：手账样式（插在 .card 规则前）
+          reps.append((
+            "  .card {\n    background: var(--card-glass);\n    border-radius: var(--radius);\n    padding: 16px;\n    margin-bottom: 12px;\n    position: relative;\n",
+            "  /* 手账样式：左栏月/日 + 竖线 */\n  :root[data-time-style=\"journal\"] .tl-row {\n    position: relative;\n    padding-left: 68px;\n  }\n  :root[data-time-style=\"journal\"] .tl-row::before {\n    content: '';\n    position: absolute;\n    left: 56px;\n    top: 2px;\n    bottom: -12px;\n    width: 1px;\n    background: var(--line);\n  }\n  :root[data-time-style=\"journal\"] .tl-side {\n    position: absolute;\n    left: 0;\n    top: 12px;\n    width: 46px;\n    display: flex;\n    flex-direction: column;\n    align-items: flex-end;\n    line-height: 1;\n  }\n  :root[data-time-style=\"journal\"] .tl-month {\n    font-size: 11px;\n    color: var(--text-dim);\n    letter-spacing: .5px;\n    margin-bottom: 4px;\n  }\n  :root[data-time-style=\"journal\"] .tl-day {\n    font-family: Georgia, \"Times New Roman\", serif;\n    font-size: 24px;\n    font-weight: 700;\n    color: var(--accent);\n  }\n  :root[data-time-style=\"journal\"] .tl-year {\n    position: sticky;\n    top: -14px;\n    z-index: 6;\n    margin: 2px 0 4px;\n    padding: 8px 0 6px;\n    font-family: Georgia, \"Times New Roman\", serif;\n    font-size: 13px;\n    letter-spacing: 3px;\n    color: var(--text-dim);\n    background: var(--bg);\n  }\n\n  .card {\n    background: var(--card-glass);\n    border-radius: var(--radius);\n    padding: 16px;\n    margin-bottom: 12px;\n    position: relative;\n",
+            1
+          ))
+
+          # 4) 设置里加第三个选项
+          reps.append((
+            "          <option value=\"timeline\">时间线（圆点 + 横线）</option>\n",
+            "          <option value=\"timeline\">时间线（圆点 + 横线）</option>\n          <option value=\"journal\">手账（左栏月/日 + 竖线）</option>\n",
+            1
+          ))
+
+          bad = False
+          for i, (old, new, exp) in enumerate(reps, 1):
+              c = s.count(old)
+              print('rep%d count=%d want=%d' % (i, c, exp))
+              if c != exp:
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new, exp in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "feat: add journal date style (month/day rail)"
+          git push origin HEAD:main
+      - name: Cleanup
+        run: |
+          git rm -f dump8.txt 2>/dev/null || true
+          git rm .github/workflows/add-journal-style.yml
+          git commit -m "chore: cleanup dump8 and journal workflow"
+          git push origin HEAD:main
