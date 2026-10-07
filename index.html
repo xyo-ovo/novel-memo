@@ -313,15 +313,17 @@
     height: 1px;
     background: var(--line);
   }
-  /* 手账样式：日期在上，竖线从日期正下方延伸，卡片挂右侧 */
+  /* 手账样式：日期在上，竖线从日期正下方垂直延伸，卡片挂右侧 */
   :root[data-time-style="journal"] .tl-row {
     position: relative;
+    padding-left: 22px;
+    padding-bottom: 14px;
   }
   :root[data-time-style="journal"] .tl-row::before {
     content: '';
     position: absolute;
-    left: 4px;
-    top: 34px;
+    left: 0;
+    top: 33px;
     bottom: 0;
     width: 1px;
     background: var(--line);
@@ -330,8 +332,7 @@
     display: flex;
     align-items: baseline;
     gap: 7px;
-    margin: 0 0 9px;
-    padding-left: 2px;
+    margin: 0 0 10px -22px;
     line-height: 1;
   }
   :root[data-time-style="journal"] .tl-month {
@@ -349,7 +350,7 @@
     line-height: 1;
   }
   :root[data-time-style="journal"] .tl-row .card {
-    margin-left: 24px;
+    margin-bottom: 0;
   }
   :root[data-time-style="journal"] .tl-year {
     position: sticky;
