@@ -1,0 +1,57 @@
+=== 2465-2500 ===
+      const startDisplay = formatStartTime(r);
+      return `
+        ${startDisplay ? `<div class="card-time">${startDisplay}</div>` : ''}
+        <div class="card" data-id="${r.id}">
+          <div class="card-layout">
+            ${coverHtml}
+            <div class="card-main">
+              <div class="card-head">
+                <div class="card-info">
+                  <div class="card-title">${esc(r.title)}</div>
+                  ${authorLine}
+                  ${tagsRow}
+                </div>
+                <span class="badge ${meta.cls}">${meta.text}</span>
+              </div>
+              ${starRow}
+              ${notes}
+              ${metaLine}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // 依次错开浮现：卡片上方的时间标签和卡片本身同步入场
+    if (anim) {
+      let idx = 0;
+      let pendingTime = null;
+      Array.from($list.children).forEach(el => {
+        if (!el.classList) return;
+        if (el.classList.contains('card-time')) {
+          pendingTime = el;
+        } else if (el.classList.contains('card')) {
+          const delay = (Math.min(idx, 14) * 32) + 'ms';
+          el.style.animationDelay = delay;
+          if (pendingTime) {
+            pendingTime.style.animationDelay = delay;
+
+=== time-style options ===
+1250:        <select id="set-time-style">
+1251-          <option value="marker">分组标记（小竖条）</option>
+1252-          <option value="timeline">时间线（圆点 + 横线）</option>
+1253-        </select>
+1254-      </div>
+1255-
+1256-      <div class="section-title">批量导入 / 本地备份</div>
+1257-      <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
+1258-      <div class="io-row">
+
+=== timeStyle js ===
+1314:  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', timeStyle: 'marker', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' };
+1521:    if (tEl) tEl.value = settings.timeStyle || 'marker';
+1522:    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';
+1676:        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', timeStyle: 'marker', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' }, s);
+1688:    if (tSel) tSel.value = settings.timeStyle || 'marker';
+3496:    settings.timeStyle = tSel.value;
+3497:    document.documentElement.dataset.timeStyle = settings.timeStyle;
