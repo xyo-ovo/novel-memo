@@ -314,10 +314,14 @@
     background: var(--line);
   }
   /* 手账样式：日期在上，竖线从日期正下方垂直延伸，卡片挂右侧 */
+  :root[data-time-style="journal"] #list {
+    padding-top: 0;
+  }
   :root[data-time-style="journal"] .tl-row {
     position: relative;
-    padding-left: 22px;
-    padding-bottom: 14px;
+    margin-left: -16px;
+    padding-left: 16px;
+    padding-bottom: 12px;
   }
   :root[data-time-style="journal"] .tl-row::before {
     content: '';
@@ -332,7 +336,8 @@
     display: flex;
     align-items: baseline;
     gap: 7px;
-    margin: 0 0 10px -22px;
+    margin: 0 0 10px -16px;
+    padding-left: 2px;
     line-height: 1;
   }
   :root[data-time-style="journal"] .tl-month {
@@ -356,8 +361,8 @@
     position: sticky;
     top: 0;
     z-index: 6;
-    margin: -14px 0 14px;
-    padding: 17px 0 11px;
+    margin: 0 0 12px;
+    padding: 16px 0 10px;
     font-family: Georgia, "Times New Roman", serif;
     font-size: 12px;
     font-weight: 600;
@@ -1741,6 +1746,7 @@
     if (durSel) durSel.value = settings.durationFormat;
     const tSel = document.getElementById('set-time-style');
     if (tSel) tSel.value = settings.timeStyle || 'marker';
+    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';
     const gToken = document.getElementById('gist-token');
     const gId = document.getElementById('gist-id');
     if (gToken) gToken.value = settings.gistToken || '';
