@@ -1,0 +1,286 @@
+########## 1. HTML: #list 及其父容器 ##########
+1083-        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+1084-          <circle cx="5" cy="12" r="1.7"/>
+1085-          <circle cx="12" cy="12" r="1.7"/>
+1086-          <circle cx="19" cy="12" r="1.7"/>
+1087-        </svg>
+1088-      </button>
+1089-    </div>
+1090-  </header>
+1091-
+1092-  <div class="toolbar">
+1093-    <div class="search-box">
+1094-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+1095-        <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.3" y2="16.3"/>
+1096-      </svg>
+1097-      <input id="search-input" type="text" placeholder="搜索书名、作者或标签" autocomplete="off">
+1098-    </div>
+1099-    <div class="sort-box">
+1100-      <button id="sort-btn" title="排序">
+1101-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+1102-          <line x1="8" y1="6" x2="20" y2="6"/>
+1103-          <line x1="4" y1="12" x2="20" y2="12"/>
+1104-          <line x1="10" y1="18" x2="20" y2="18"/>
+1105-        </svg>
+1106-      </button>
+1107-      <div class="sort-menu" id="sort-menu"></div>
+1108-    </div>
+1109-  </div>
+1110-
+1111-  <div class="filter-row" id="filter-row"></div>
+1112-
+1113:  <div id="list"></div>
+
+########## 2. CSS: #list / .tl-* / .card / .card-time 全部 ##########
+240|     transition: background .15s, border-color .15s, color .15s;
+241|     white-space: nowrap;
+242|     flex: 0 0 auto;
+243|   }
+244|   .filter-row button.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+245|   .filter-sep { flex: 0 0 auto; width: 1px; height: 18px; background: var(--line); align-self: center; margin: 0 3px; }
+246| 
+247|   #list {
+248|     flex: 1;
+249|     overflow-y: auto;
+250|     padding: 14px 16px 110px;
+251|     -webkit-overflow-scrolling: touch;
+252|     scrollbar-width: none;
+253|   }
+254|   #list::-webkit-scrollbar { display: none; }
+255| 
+256|   /* 自绘滚动指示条：手机上原生滚动条只在滑动瞬间闪现，
+257|      这里自己画一条，滑动时出现在列表右侧 */
+258|   .scroll-indicator {
+259|     position: absolute;
+260|     right: 3px;
+261|     width: 3px;
+262|     pointer-events: none;
+263|     z-index: 15;
+264|     opacity: 0;
+265|     transition: opacity .3s;
+266|   }
+267|   .scroll-indicator.show { opacity: 1; }
+268|   .scroll-indicator i {
+269|     display: block;
+270|     width: 100%;
+271|     height: 100%;
+272|     border-radius: 999px;
+273|     background: var(--scroll-thumb);
+274|   }
+275| 
+276|   .card-time {
+277|     font-size: calc(12px * var(--fs));
+278|     color: var(--text-dim);
+279|     margin: 14px 0 7px 4px;
+280|     letter-spacing: .3px;
+281|     padding-left: 9px;
+282|     position: relative;
+283|   }
+284|   .card-time::before {
+285|     content: '';
+286|     position: absolute;
+287|     left: 0;
+288|     top: 50%;
+289|     transform: translateY(-50%);
+290|     width: 3px;
+291|     height: 11px;
+292|     border-radius: 2px;
+293|     background: var(--accent);
+294|     opacity: .5;
+295|   }
+296|   :root[data-time-style="timeline"] .card-time {
+297|     display: flex;
+298|     align-items: center;
+299|     gap: 8px;
+300|     padding-left: 0;
+301|   }
+302|   :root[data-time-style="timeline"] .card-time::before {
+303|     position: static;
+304|     transform: none;
+305|     width: 7px;
+306|     height: 7px;
+307|     border-radius: 50%;
+308|     opacity: .75;
+309|   }
+310|   :root[data-time-style="timeline"] .card-time::after {
+311|     content: '';
+312|     flex: 1;
+313|     height: 1px;
+314|     background: var(--line);
+315|   }
+316|   /* 手账样式：左栏月/日 + 竖线 */
+317|   :root[data-time-style="journal"] .tl-row {
+318|     position: relative;
+319|     padding-left: 76px;
+320|   }
+321|   :root[data-time-style="journal"] .tl-row::before {
+322|     content: '';
+323|     position: absolute;
+324|     left: 54px;
+325|     top: 6px;
+326|     bottom: -12px;
+327|     width: 1px;
+328|     background: var(--line);
+329|   }
+330|   :root[data-time-style="journal"] .tl-side {
+331|     position: absolute;
+332|     left: 0;
+333|     top: 12px;
+334|     width: 50px;
+335|     display: flex;
+336|     flex-direction: column;
+337|     align-items: flex-end;
+338|     line-height: 1;
+339|   }
+340|   :root[data-time-style="journal"] .tl-month {
+
+########## 3. CSS: journal 全部规则 ##########
+296:  :root[data-time-style="timeline"] .card-time {
+302:  :root[data-time-style="timeline"] .card-time::before {
+310:  :root[data-time-style="timeline"] .card-time::after {
+317:  :root[data-time-style="journal"] .tl-row {
+321:  :root[data-time-style="journal"] .tl-row::before {
+330:  :root[data-time-style="journal"] .tl-side {
+340:  :root[data-time-style="journal"] .tl-month {
+347:  :root[data-time-style="journal"] .tl-day {
+355:  :root[data-time-style="journal"] .tl-side::after {
+364:  :root[data-time-style="journal"] .tl-year {
+
+########## 4. JS: render 里生成卡片结构（2455-2500） ##########
+2455|     if (anim) $list.classList.add('anim');
+2456|     else $list.classList.remove('anim');
+2457| 
+2458|     if (shown.length === 0) {
+2459|       const isFirst = records.length === 0;
+2460|       const wishOnly = !isFirst && currentFilter === 'all' && !currentCategory && !searchQuery.trim()
+2461|         && records.every(r => r.status === 'wishlist');
+2462|       let emptyMsg;
+2463|       if (isFirst) {
+2464|         emptyMsg = '还没有记录<br>点击右下角加号添加第一本<br>或点右上角菜单批量导入旧数据';
+2465|       } else if (wishOnly) {
+2466|         emptyMsg = '这里还没有读过的书<br>「想读」的书在顶部「想读」里';
+2467|       } else {
+2468|         emptyMsg = '没有找到匹配的记录';
+2469|       }
+2470|       $list.classList.remove('anim');
+2471|       $list.innerHTML = `
+2472|         <div class="empty">
+2473|           <div class="empty-icon">
+2474|             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+2475|               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+2476|               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+2477|             </svg>
+2478|           </div>
+2479|           <p>${emptyMsg}</p>
+2480|         </div>`;
+2481|       if (multiSelectMode) exitMultiSelect();
+2482|       return;
+2483|     }
+2484| 
+2485|     let journalLastYear = '';
+2486|     $list.innerHTML = shown.map(r => {
+2487|       const meta = STATUS_META[r.status] || STATUS_META.reading;
+2488|       const starRow = (r.rating > 0)
+2489|         ? `<div class="stars">${[1,2,3,4,5].map(i =>
+2490|             `<span class="${i <= r.rating ? 'on' : ''}">${STAR_SVG}</span>`
+2491|           ).join('')}</div>` : '';
+2492|       const tags = splitTags(r.genre);
+2493|       const genreTags = tags.map(t => `<span class="card-genre">${esc(t)}</span>`).join('');
+2494|       const tagsRow = genreTags ? `<div class="card-genres">${genreTags}</div>` : '';
+2495|       const notes = r.notes ? `<div class="card-notes">${esc(r.notes)}</div>` : '';
+2496|       const coverUrl = coverMap[r.id];
+2497|       const coverHtml = coverUrl
+2498|         ? `<div class="card-cover"><img src="${esc(coverUrl)}" alt="封面" loading="lazy"></div>`
+2499|         : '';
+2500|       const wc = (r.wordCount !== null && r.wordCount !== undefined && r.wordCount > 0)
+
+########## 5. JS: render 里 tl-row 生成（2400-2460） ##########
+2400|   }
+2401| 
+2402|   function formatReadingHours(h) {
+2403|     if (h === null || h === undefined || isNaN(h) || h <= 0) return '';
+2404|     const totalMin = Math.round(h * 60);
+2405|     const H = Math.floor(totalMin / 60);
+2406|     const M = totalMin % 60;
+2407|     const fmt = settings.durationFormat || 'cn';
+2408|     switch (fmt) {
+2409|       case 'cn-pad': return M === 0 ? H + '小时' : H + '小时' + String(M).padStart(2,'0') + '分';
+2410|       case 'cn-min': return M === 0 ? H + '小时' : H + '小时' + M + '分钟';
+2411|       case 'en': return M === 0 ? H + 'h' : H + 'h' + M + 'm';
+2412|       case 'en-pad': return M === 0 ? H + 'h' : H + 'h' + String(M).padStart(2,'0') + 'm';
+2413|       case 'hours': return H === 0 ? (M/60).toFixed(1).replace(/\.0$/,'') + '小时' : (h % 1 === 0 ? h : h.toFixed(1).replace(/\.0$/,'')) + '小时';
+2414|       case 'minutes': return totalMin + '分钟';
+2415|       case 'cn':
+2416|       default: return (H ? H + '小时' : '') + (M || !H ? M + '分' : '');
+2417|     }
+2418|   }
+2419| 
+2420|   function render() {
+2421|     const anim = !suppressAnim;
+2422|     suppressAnim = false;
+2423| 
+2424|     let shown = records;
+2425|     if (currentCategory) {
+2426|       // 兜底：就算某本书的 category 还没迁过来，只要标签里有这个分类名也算
+2427|       shown = shown.filter(r =>
+2428|         r.category === currentCategory ||
+2429|         (!r.category && splitTags(r.genre).indexOf(currentCategory) >= 0)
+2430|       );
+2431|     }
+2432|     if (searchQuery.trim()) {
+2433|       const q = searchQuery.trim().toLowerCase();
+2434|       shown = shown.filter(r =>
+2435|         (r.title || '').toLowerCase().includes(q) ||
+2436|         (r.author || '').toLowerCase().includes(q) ||
+2437|         (r.genre || '').toLowerCase().includes(q)
+2438|       );
+2439|     } else if (currentFilter === 'all') {
+2440|       shown = shown.filter(r => r.status !== 'wishlist');
+2441|     } else {
+2442|       shown = shown.filter(r => r.status === currentFilter);
+2443|     }
+2444|     shown = sortRecords(shown);
+2445|     const coverMap = assignCovers(shown);
+2446| 
+2447|     const count = (s) => records.filter(r => r.status === s).length;
+2448|     document.getElementById('stat-finished').textContent = count('finished');
+2449|     document.getElementById('stat-reading').textContent = count('reading');
+2450|     document.getElementById('stat-dropped').textContent = count('dropped');
+2451|     const wishN = count('wishlist');
+2452|     document.getElementById('stat-wishlist').textContent = wishN;
+2453|     document.getElementById('stat-wishlist-box').style.display = wishN > 0 ? '' : 'none';
+2454| 
+2455|     if (anim) $list.classList.add('anim');
+2456|     else $list.classList.remove('anim');
+2457| 
+2458|     if (shown.length === 0) {
+2459|       const isFirst = records.length === 0;
+2460|       const wishOnly = !isFirst && currentFilter === 'all' && !currentCategory && !searchQuery.trim()
+
+########## 6. JS: 列表入场动画处理 ##########
+2570:    // 依次错开浮现：卡片上方的时间标签和卡片本身同步入场
+2571-    if (anim) {
+2572-      let idx = 0;
+2573-      let pendingTime = null;
+2574-      Array.from($list.children).forEach(el => {
+2575-        if (!el.classList) return;
+2576-        if (el.classList.contains('card-time')) {
+2577-          pendingTime = el;
+2578-        } else if (el.classList.contains('card')) {
+2579-          const delay = (Math.min(idx, 14) * 32) + 'ms';
+2580-          el.style.animationDelay = delay;
+2581-          if (pendingTime) {
+2582-            pendingTime.style.animationDelay = delay;
+2583-            pendingTime = null;
+2584-          }
+2585-          idx++;
+2586-        }
+2587-      });
+2588-    }
+2589-
+2590-    if (multiSelectMode) updateMultiSelectUI();
+2591-    requestAnimationFrame(() => updateScrollIndicator(false));
+2592-  }
+2593-
+2594-  function esc(s) {
+2595-    return String(s).replace(/[&<>"']/g, c =>
