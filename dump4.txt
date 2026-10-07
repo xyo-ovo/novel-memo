@@ -1,0 +1,43 @@
+=== grep ===
+276:  .card-time {
+299:  #list.anim .card-time { animation: cardIn .34s cubic-bezier(.32,.72,.28,1) backwards; }
+2417:      const startDisplay = formatStartTime(r);
+2419:        ${startDisplay ? `<div class="card-time">${startDisplay}</div>` : ''}
+2446:        if (el.classList.contains('card-time')) {
+
+=== render card block (2400-2425) ===
+               ${WAIT_SVG}
+               ${esc(r.wishDate)} 想读 · 等了 ${esc(waitText)}
+             </span>`
+          : `<span class="meta-item wait">
+               ${WAIT_SVG}
+               ${esc(r.wishDate)} 想读
+             </span>`;
+      }
+      const endDateStr = formatEndDate(r);
+      const endPart = endDateStr
+        ? `<span class="meta-item">
+             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+             ${esc(endDateStr)}
+           </span>` : '';
+      const metaLine = (wc || dur || waitPart || endPart)
+        ? `<div class="meta-line">${wc}${dur}${waitPart}${endPart}</div>` : '';
+      const authorLine = r.author ? `<div class="card-author">${esc(r.author)}</div>` : '';
+      const startDisplay = formatStartTime(r);
+      return `
+        ${startDisplay ? `<div class="card-time">${startDisplay}</div>` : ''}
+        <div class="card" data-id="${r.id}">
+          <div class="card-layout">
+            ${coverHtml}
+            <div class="card-main">
+              <div class="card-head">
+                <div class="card-info">
+
+=== .card-time css ===
+276:  .card-time {
+277-    font-size: calc(12px * var(--fs));
+278-    color: var(--text-dim);
+279-    margin: 0 0 6px 4px;
+280-    letter-spacing: .3px;
+281-  }
+282-  .card {
