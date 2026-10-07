@@ -274,9 +274,9 @@
   }
 
   .card-time {
-    font-size: calc(12px * var(--fs));
+    font-size: calc(11.5px * var(--fs));
     color: var(--text-dim);
-    margin: 0 0 6px 4px;
+    margin: 0 0 10px;
     letter-spacing: .3px;
   }
   .card {
@@ -2416,8 +2416,8 @@
       const authorLine = r.author ? `<div class="card-author">${esc(r.author)}</div>` : '';
       const startDisplay = formatStartTime(r);
       return `
-        ${startDisplay ? `<div class="card-time">${startDisplay}</div>` : ''}
         <div class="card" data-id="${r.id}">
+          ${startDisplay ? `<div class="card-time">${startDisplay}</div>` : ''}
           <div class="card-layout">
             ${coverHtml}
             <div class="card-main">
