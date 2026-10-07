@@ -1,0 +1,55 @@
+name: rail-align
+
+on:
+  push:
+    paths:
+      - '.github/workflows/rail-align.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Align rail with date and keep it continuous
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          old = "  /* 手账样式：日期在上，竖线从日期正下方延伸，卡片挂右侧 */\n  :root[data-time-style=\"journal\"] .tl-row {\n    position: relative;\n  }\n  :root[data-time-style=\"journal\"] .tl-row::before {\n    content: '';\n    position: absolute;\n    left: 4px;\n    top: 34px;\n    bottom: 0;\n    width: 1px;\n    background: var(--line);\n  }\n  :root[data-time-style=\"journal\"] .tl-side {\n    display: flex;\n    align-items: baseline;\n    gap: 7px;\n    margin: 0 0 9px;\n    padding-left: 2px;\n    line-height: 1;\n  }\n"
+
+          new = "  /* 手账样式：日期在上，竖线从日期正下方垂直延伸，卡片挂右侧 */\n  :root[data-time-style=\"journal\"] .tl-row {\n    position: relative;\n    padding-left: 22px;\n    padding-bottom: 14px;\n  }\n  :root[data-time-style=\"journal\"] .tl-row::before {\n    content: '';\n    position: absolute;\n    left: 0;\n    top: 33px;\n    bottom: 0;\n    width: 1px;\n    background: var(--line);\n  }\n  :root[data-time-style=\"journal\"] .tl-side {\n    display: flex;\n    align-items: baseline;\n    gap: 7px;\n    margin: 0 0 10px -22px;\n    line-height: 1;\n  }\n"
+
+          c = s.count(old)
+          print('rep1 count=%d want=1' % c)
+          if c != 1:
+              sys.exit(1)
+          s = s.replace(old, new)
+
+          old2 = "  :root[data-time-style=\"journal\"] .tl-row .card {\n    margin-left: 24px;\n  }\n"
+          new2 = "  :root[data-time-style=\"journal\"] .tl-row .card {\n    margin-bottom: 0;\n  }\n"
+          c2 = s.count(old2)
+          print('rep2 count=%d want=1' % c2)
+          if c2 != 1:
+              sys.exit(1)
+          s = s.replace(old2, new2)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "fix: journal rail aligns with the date and runs continuous"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/rail-align.yml
+          git commit -m "chore: remove rail-align workflow"
+          git push origin HEAD:main
