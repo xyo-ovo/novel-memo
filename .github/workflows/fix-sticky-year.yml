@@ -1,0 +1,47 @@
+name: fix-sticky-year
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-sticky-year.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix sticky year position
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+
+          old = "  :root[data-time-style=\"journal\"] .tl-year {\n    position: sticky;\n    top: -14px;\n    z-index: 6;\n    margin: 2px 0 4px;\n    padding: 8px 0 6px;\n    font-family: Georgia, \"Times New Roman\", serif;\n    font-size: 13px;\n    letter-spacing: 3px;\n    color: var(--text-dim);\n    background: var(--bg);\n  }\n"
+
+          new = "  :root[data-time-style=\"journal\"] .tl-year {\n    position: sticky;\n    top: 0;\n    z-index: 6;\n    margin: 0 0 6px;\n    padding: 10px 0 8px;\n    font-family: Georgia, \"Times New Roman\", serif;\n    font-size: 13px;\n    letter-spacing: 3px;\n    color: var(--text-dim);\n    background: var(--bg);\n    border-bottom: 1px solid var(--line);\n  }\n"
+
+          c = s.count(old)
+          print('count=%d want=1' % c)
+          if c != 1:
+              sys.exit(1)
+
+          s = s.replace(old, new)
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "fix: sticky year sticks to top of list"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/fix-sticky-year.yml
+          git commit -m "chore: remove fix-sticky-year workflow"
+          git push origin HEAD:main
