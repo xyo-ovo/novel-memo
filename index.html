@@ -313,6 +313,55 @@
     height: 1px;
     background: var(--line);
   }
+  /* 手账样式：左栏月/日 + 竖线 */
+  :root[data-time-style="journal"] .tl-row {
+    position: relative;
+    padding-left: 68px;
+  }
+  :root[data-time-style="journal"] .tl-row::before {
+    content: '';
+    position: absolute;
+    left: 56px;
+    top: 2px;
+    bottom: -12px;
+    width: 1px;
+    background: var(--line);
+  }
+  :root[data-time-style="journal"] .tl-side {
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 46px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1;
+  }
+  :root[data-time-style="journal"] .tl-month {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+  }
+  :root[data-time-style="journal"] .tl-day {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  :root[data-time-style="journal"] .tl-year {
+    position: sticky;
+    top: -14px;
+    z-index: 6;
+    margin: 2px 0 4px;
+    padding: 8px 0 6px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    background: var(--bg);
+  }
+
   .card {
     background: var(--card-glass);
     border-radius: var(--radius);
@@ -1250,6 +1299,7 @@
         <select id="set-time-style">
           <option value="marker">分组标记（小竖条）</option>
           <option value="timeline">时间线（圆点 + 横线）</option>
+          <option value="journal">手账（左栏月/日 + 竖线）</option>
         </select>
       </div>
 
@@ -2418,6 +2468,7 @@
       return;
     }
 
+    let journalLastYear = '';
     $list.innerHTML = shown.map(r => {
       const meta = STATUS_META[r.status] || STATUS_META.reading;
       const starRow = (r.rating > 0)
@@ -2463,8 +2514,24 @@
         ? `<div class="meta-line">${wc}${dur}${waitPart}${endPart}</div>` : '';
       const authorLine = r.author ? `<div class="card-author">${esc(r.author)}</div>` : '';
       const startDisplay = formatStartTime(r);
+      const isJournal = settings.timeStyle === 'journal';
+      let journalHead = '';
+      let sideHtml = '';
+      if (isJournal && r.startDate) {
+        const jy = r.startDate.slice(0, 4);
+        const jm = parseInt(r.startDate.slice(5, 7), 10);
+        const jd = parseInt(r.startDate.slice(8, 10), 10);
+        if (jy !== journalLastYear) {
+          journalLastYear = jy;
+          journalHead = `<div class="tl-year">${jy} 年</div>`;
+        }
+        sideHtml = `<div class="tl-side"><span class="tl-month">${jm}月</span><span class="tl-day">${jd}</span></div>`;
+      }
       return `
-        ${startDisplay ? `<div class="card-time">${startDisplay}</div>` : ''}
+        ${journalHead}
+        <div class="tl-row">
+        ${sideHtml}
+        ${(!isJournal && startDisplay) ? `<div class="card-time">${startDisplay}</div>` : ''}
         <div class="card" data-id="${r.id}">
           <div class="card-layout">
             ${coverHtml}
@@ -2482,6 +2549,7 @@
               ${metaLine}
             </div>
           </div>
+        </div>
         </div>`;
     }).join('');
 
