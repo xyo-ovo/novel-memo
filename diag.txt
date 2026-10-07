@@ -1,0 +1,13 @@
+hint_duration: 0
+cardtime_before: 1
+duration_el: 0
+duration_default: 2
+duration_init: 0
+duration_change: 0
+
+--- duration area ---
+1213:       <div class="section-title">阅读时长格式</div>
+1216:         <select id="set-duration-format">
+1489:     const dEl = document.getElementById('set-duration-format');
+1653:     const durSel = document.getElementById('set-duration-format');
+3454:   const durSel = document.getElementById('set-duration-format');
