@@ -316,48 +316,61 @@
   /* 手账样式：左栏月/日 + 竖线 */
   :root[data-time-style="journal"] .tl-row {
     position: relative;
-    padding-left: 68px;
+    padding-left: 82px;
   }
   :root[data-time-style="journal"] .tl-row::before {
     content: '';
     position: absolute;
-    left: 56px;
-    top: 2px;
+    left: 60px;
+    top: 8px;
     bottom: -12px;
     width: 1px;
     background: var(--line);
   }
   :root[data-time-style="journal"] .tl-side {
     position: absolute;
-    left: 0;
+    left: 2px;
     top: 12px;
-    width: 46px;
+    width: 50px;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     line-height: 1;
   }
   :root[data-time-style="journal"] .tl-month {
-    font-size: 11px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3.5px;
     color: var(--text-dim);
-    letter-spacing: .5px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
   :root[data-time-style="journal"] .tl-day {
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 24px;
+    font-size: 31px;
     font-weight: 700;
+    letter-spacing: -1.5px;
     color: var(--accent);
+    line-height: .9;
+  }
+  :root[data-time-style="journal"] .tl-side::after {
+    content: '';
+    width: 22px;
+    height: 2px;
+    margin-top: 9px;
+    border-radius: 1px;
+    background: var(--accent);
+    opacity: .3;
   }
   :root[data-time-style="journal"] .tl-year {
     position: sticky;
     top: 0;
     z-index: 6;
-    margin: 0 0 6px;
-    padding: 10px 0 8px;
+    margin: -14px 0 10px;
+    padding: 17px 0 11px;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 13px;
-    letter-spacing: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 5px;
     color: var(--text-dim);
     background: var(--bg);
     border-bottom: 1px solid var(--line);
