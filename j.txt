@@ -1,0 +1,98 @@
+===== journal 全部规则 =====
+317:   :root[data-time-style="journal"] .tl-row {
+318:     position: relative;
+319:     padding-left: 22px;
+320:     padding-bottom: 14px;
+321:   }
+322:   :root[data-time-style="journal"] .tl-row::before {
+323:     content: '';
+324:     position: absolute;
+325:     left: 0;
+326:     top: 33px;
+327:     bottom: 0;
+328:     width: 1px;
+329:     background: var(--line);
+330:   }
+331:   :root[data-time-style="journal"] .tl-side {
+332:     display: flex;
+333:     align-items: baseline;
+334:     gap: 7px;
+335:     margin: 0 0 10px -22px;
+336:     line-height: 1;
+337:   }
+338:   :root[data-time-style="journal"] .tl-month {
+339:     font-size: 10px;
+340:     font-weight: 700;
+341:     letter-spacing: 2.5px;
+342:     color: var(--text-dim);
+343:   }
+344:   :root[data-time-style="journal"] .tl-day {
+345:     font-family: Georgia, "Times New Roman", serif;
+346:     font-size: 23px;
+347:     font-weight: 700;
+348:     letter-spacing: -.5px;
+349:     color: var(--accent);
+350:     line-height: 1;
+351:   }
+352:   :root[data-time-style="journal"] .tl-row .card {
+353:     margin-bottom: 0;
+354:   }
+355:   :root[data-time-style="journal"] .tl-year {
+356:     position: sticky;
+357:     top: 0;
+358:     z-index: 6;
+359:     margin: -14px 0 14px;
+360:     padding: 17px 0 11px;
+361:     font-family: Georgia, "Times New Roman", serif;
+362:     font-size: 12px;
+363:     font-weight: 600;
+364:     letter-spacing: 5px;
+365:     color: var(--text-dim);
+366:     background: var(--bg);
+367:     border-bottom: 1px solid var(--line);
+368:   }
+369: 
+370:   .card {
+
+===== set-time-style 出现处 =====
+1301-      <div class="section-title">日期样式</div>
+1302-      <div class="field">
+1303-        <label>卡片上方那行日期怎么显示</label>
+1304:        <select id="set-time-style">
+1305-          <option value="marker">分组标记（小竖条）</option>
+1306-          <option value="timeline">时间线（圆点 + 横线）</option>
+1307-          <option value="journal">手账（左栏月/日 + 竖线）</option>
+--
+1572-    if (rEl) rEl.value = settings.coverRadius;
+1573-    const dEl = document.getElementById('set-duration-format');
+1574-    if (dEl) dEl.value = settings.durationFormat;
+1575:    const tEl = document.getElementById('set-time-style');
+1576-    if (tEl) tEl.value = settings.timeStyle || 'marker';
+1577-    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';
+1578-    applyColorTheme(settings.colorTheme);
+--
+1739-    document.getElementById('set-cover-radius').value = settings.coverRadius;
+1740-    const durSel = document.getElementById('set-duration-format');
+1741-    if (durSel) durSel.value = settings.durationFormat;
+1742:    const tSel = document.getElementById('set-time-style');
+1743-    if (tSel) tSel.value = settings.timeStyle || 'marker';
+1744-    const gToken = document.getElementById('gist-token');
+1745-    const gId = document.getElementById('gist-id');
+--
+3564-    saveSettings();
+3565-    render();
+3566-  });
+3567:  const tSel = document.getElementById('set-time-style');
+3568-  if (tSel) tSel.addEventListener('change', () => {
+3569-    settings.timeStyle = tSel.value;
+3570-    document.documentElement.dataset.timeStyle = settings.timeStyle;
+
+===== #list css =====
+247:  #list {
+248-    flex: 1;
+249-    overflow-y: auto;
+250-    padding: 14px 16px 110px;
+251-    -webkit-overflow-scrolling: touch;
+252-    scrollbar-width: none;
+253-  }
+254-  #list::-webkit-scrollbar { display: none; }
