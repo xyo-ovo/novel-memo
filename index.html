@@ -293,6 +293,26 @@
     background: var(--accent);
     opacity: .5;
   }
+  :root[data-time-style="timeline"] .card-time {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 0;
+  }
+  :root[data-time-style="timeline"] .card-time::before {
+    position: static;
+    transform: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    opacity: .75;
+  }
+  :root[data-time-style="timeline"] .card-time::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
   .card {
     background: var(--card-glass);
     border-radius: var(--radius);
@@ -1224,6 +1244,15 @@
         </select>
       </div>
 
+      <div class="section-title">日期样式</div>
+      <div class="field">
+        <label>卡片上方那行日期怎么显示</label>
+        <select id="set-time-style">
+          <option value="marker">分组标记（小竖条）</option>
+          <option value="timeline">时间线（圆点 + 横线）</option>
+        </select>
+      </div>
+
       <div class="section-title">批量导入 / 本地备份</div>
       <textarea id="import-area" placeholder="每行一条，格式：日期｜书名/作者【可选标记】&#10;例如：250310｜兄友妹恭/破破&#10;支持「XX章弃」标记，自动识别为弃读"></textarea>
       <div class="io-row">
@@ -1282,7 +1311,7 @@
   let records = [];
   let themes = [];
   let categories = [];
-  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' };
+  let settings = { coverWidth: 64, coverGap: 14, coverRadius: 0, durationFormat: 'cn', timeStyle: 'marker', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' };
   let currentFilter = 'all';
   let currentCategory = '';
   let searchQuery = '';
@@ -1488,6 +1517,9 @@
     if (rEl) rEl.value = settings.coverRadius;
     const dEl = document.getElementById('set-duration-format');
     if (dEl) dEl.value = settings.durationFormat;
+    const tEl = document.getElementById('set-time-style');
+    if (tEl) tEl.value = settings.timeStyle || 'marker';
+    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';
     applyColorTheme(settings.colorTheme);
     applyFontScale();
     renderRestoreModePicker();
@@ -1641,7 +1673,7 @@
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
       if (s && typeof s === 'object') {
-        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' }, s);
+        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', timeStyle: 'marker', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' }, s);
       }
     } catch (e) {}
     document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
@@ -1652,6 +1684,8 @@
     document.getElementById('set-cover-radius').value = settings.coverRadius;
     const durSel = document.getElementById('set-duration-format');
     if (durSel) durSel.value = settings.durationFormat;
+    const tSel = document.getElementById('set-time-style');
+    if (tSel) tSel.value = settings.timeStyle || 'marker';
     const gToken = document.getElementById('gist-token');
     const gId = document.getElementById('gist-id');
     if (gToken) gToken.value = settings.gistToken || '';
@@ -3454,6 +3488,13 @@
   const durSel = document.getElementById('set-duration-format');
   if (durSel) durSel.addEventListener('change', () => {
     settings.durationFormat = durSel.value;
+    saveSettings();
+    render();
+  });
+  const tSel = document.getElementById('set-time-style');
+  if (tSel) tSel.addEventListener('change', () => {
+    settings.timeStyle = tSel.value;
+    document.documentElement.dataset.timeStyle = settings.timeStyle;
     saveSettings();
     render();
   });
