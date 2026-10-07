@@ -1,0 +1,50 @@
+name: diag-time-style
+
+on:
+  push:
+    paths:
+      - '.github/workflows/diag-time-style.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diagnose anchors
+        run: |
+          python3 - <<'PY'
+          import io
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          out = []
+          tests = {
+            'hint_duration': "        <div class=\"hint\">卡片上如何显示阅读时长</div>\n      </div>\n",
+            'cardtime_before': "  .card-time::before {\n    content: '';\n    position: absolute;\n    left: 0;\n    top: 50%;\n    transform: translateY(-50%);\n    width: 3px;\n    height: 11px;\n    border-radius: 2px;\n    background: var(--accent);\n    opacity: .5;\n  }\n",
+            'duration_el': "  const $durationFormat = document.getElementById('duration-format');\n",
+            'duration_default': "durationFormat: 'cn',",
+            'duration_init': "    $durationFormat.value = settings.durationFormat;\n",
+            'duration_change': "  $durationFormat.addEventListener('change', () => {\n    settings.durationFormat = $durationFormat.value;\n    saveSettings();\n    render();\n  });\n",
+          }
+          for k, v in tests.items():
+              out.append('%s: %d' % (k, s.count(v)))
+          out.append('')
+          out.append('--- duration area ---')
+          for i, l in enumerate(s.split('\n')):
+              if 'duration-format' in l or '阅读时长格式' in l:
+                  out.append('%d: %s' % (i+1, l))
+          io.open('diag.txt', 'w', encoding='utf-8').write('\n'.join(out))
+          print('\n'.join(out))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diag.txt
+          git commit -m "chore: diagnose time-style anchors"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/diag-time-style.yml
+          git commit -m "chore: remove diag workflow"
+          git push origin HEAD:main
