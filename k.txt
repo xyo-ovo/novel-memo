@@ -1,0 +1,120 @@
+=== CSS 308-380 ===
+308|    opacity: .75;
+309|  }
+310|  :root[data-time-style="timeline"] .card-time::after {
+311|    content: '';
+312|    flex: 1;
+313|    height: 1px;
+314|    background: var(--line);
+315|  }
+316|  /* 手账样式：日期在上，竖线从日期正下方垂直延伸，卡片挂右侧 */
+317|  :root[data-time-style="journal"] #list {
+318|    padding-top: 0;
+319|  }
+320|  :root[data-time-style="journal"] .tl-row {
+321|    position: relative;
+322|    margin-left: -16px;
+323|    padding-left: 16px;
+324|    padding-bottom: 12px;
+325|  }
+326|  :root[data-time-style="journal"] .tl-row::before {
+327|    content: '';
+328|    position: absolute;
+329|    left: 0;
+330|    top: 33px;
+331|    bottom: 0;
+332|    width: 1px;
+333|    background: var(--line);
+334|  }
+335|  :root[data-time-style="journal"] .tl-side {
+336|    display: flex;
+337|    align-items: baseline;
+338|    gap: 7px;
+339|    margin: 0 0 10px -16px;
+340|    padding-left: 2px;
+341|    line-height: 1;
+342|  }
+343|  :root[data-time-style="journal"] .tl-month {
+344|    font-size: 10px;
+345|    font-weight: 700;
+346|    letter-spacing: 2.5px;
+347|    color: var(--text-dim);
+348|  }
+349|  :root[data-time-style="journal"] .tl-day {
+350|    font-family: Georgia, "Times New Roman", serif;
+351|    font-size: 23px;
+352|    font-weight: 700;
+353|    letter-spacing: -.5px;
+354|    color: var(--accent);
+355|    line-height: 1;
+356|  }
+357|  :root[data-time-style="journal"] .tl-row .card {
+358|    margin-bottom: 0;
+359|  }
+360|  :root[data-time-style="journal"] .tl-year {
+361|    position: sticky;
+362|    top: 0;
+363|    z-index: 6;
+364|    margin: 0 0 12px;
+365|    padding: 16px 0 10px;
+366|    font-family: Georgia, "Times New Roman", serif;
+367|    font-size: 12px;
+368|    font-weight: 600;
+369|    letter-spacing: 5px;
+370|    color: var(--text-dim);
+371|    background: var(--bg);
+372|    border-bottom: 1px solid var(--line);
+373|  }
+374|
+375|  .card {
+376|    background: var(--card-glass);
+377|    border-radius: var(--radius);
+378|    padding: 16px;
+379|    margin-bottom: 12px;
+380|    position: relative;
+
+=== #list 245-256 ===
+245|  .filter-sep { flex: 0 0 auto; width: 1px; height: 18px; background: var(--line); align-self: center; margin: 0 3px; }
+246|
+247|  #list {
+248|    flex: 1;
+249|    overflow-y: auto;
+250|    padding: 14px 16px 110px;
+251|    -webkit-overflow-scrolling: touch;
+252|    scrollbar-width: none;
+253|  }
+254|  #list::-webkit-scrollbar { display: none; }
+255|
+256|  /* 自绘滚动指示条：手机上原生滚动条只在滑动瞬间闪现，
+
+=== loadSettings 1735-1752 ===
+1735|      if (s && typeof s === 'object') {
+1736|        settings = Object.assign({ coverWidth: 64, coverGap: 14, coverRadius: 0, activeThemeId: '', durationFormat: 'cn', timeStyle: 'marker', colorTheme: 'forest', fontScale: 1, gistToken: '', gistId: '', restoreMode: 'merge' }, s);
+1737|      }
+1738|    } catch (e) {}
+1739|    document.documentElement.style.setProperty('--cover-width', settings.coverWidth + 'px');
+1740|    document.documentElement.style.setProperty('--cover-gap', settings.coverGap + 'px');
+1741|    document.documentElement.style.setProperty('--cover-radius', settings.coverRadius + 'px');
+1742|    document.getElementById('set-cover-width').value = settings.coverWidth;
+1743|    document.getElementById('set-cover-gap').value = settings.coverGap;
+1744|    document.getElementById('set-cover-radius').value = settings.coverRadius;
+1745|    const durSel = document.getElementById('set-duration-format');
+1746|    if (durSel) durSel.value = settings.durationFormat;
+1747|    const tSel = document.getElementById('set-time-style');
+1748|    if (tSel) tSel.value = settings.timeStyle || 'marker';
+1749|    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';
+1750|    const gToken = document.getElementById('gist-token');
+1751|    const gId = document.getElementById('gist-id');
+1752|    if (gToken) gToken.value = settings.gistToken || '';
+
+=== render 模板 tl-row ===
+320:  :root[data-time-style="journal"] .tl-row {
+326:  :root[data-time-style="journal"] .tl-row::before {
+335:  :root[data-time-style="journal"] .tl-side {
+357:  :root[data-time-style="journal"] .tl-row .card {
+360:  :root[data-time-style="journal"] .tl-year {
+2529:      let journalHead = '';
+2537:          journalHead = `<div class="tl-year">${jy} 年</div>`;
+2539:        sideHtml = `<div class="tl-side"><span class="tl-month">${jm}月</span><span class="tl-day">${jd}</span></div>`;
+2542:        ${journalHead}
+2543:        <div class="tl-row">
