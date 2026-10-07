@@ -1,0 +1,92 @@
+name: add-show-time
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-show-time.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add show-time option
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+          reps = []
+
+          # 1) 设置面板加一项
+          reps.append((
+              "      <div class=\"section-title\">日期样式</div>\n      <div class=\"field\">\n        <label>卡片上方那行日期怎么显示</label>\n        <select id=\"set-time-style\">\n          <option value=\"marker\">分组标记（小竖条）</option>\n          <option value=\"timeline\">时间线（圆点 + 横线）</option>\n          <option value=\"journal\">手账（左栏月/日 + 竖线）</option>\n        </select>\n      </div>\n",
+              "      <div class=\"section-title\">日期样式</div>\n      <div class=\"field\">\n        <label>卡片上方那行日期怎么显示</label>\n        <select id=\"set-time-style\">\n          <option value=\"marker\">分组标记（小竖条）</option>\n          <option value=\"timeline\">时间线（圆点 + 横线）</option>\n          <option value=\"journal\">手账（左栏月/日 + 竖线）</option>\n        </select>\n      </div>\n\n      <div class=\"section-title\">时间显示</div>\n      <div class=\"field\">\n        <label>日期要不要带具体时间</label>\n        <select id=\"set-show-time\">\n          <option value=\"1\">显示（几月几日 时:分）</option>\n          <option value=\"0\">不显示（只到日）</option>\n        </select>\n      </div>\n",
+              1
+          ))
+
+          # 2) settings 默认值（两处）
+          reps.append((
+              "timeStyle: 'marker',",
+              "timeStyle: 'marker', showTime: '1',",
+              2
+          ))
+
+          # 3) 开始日期
+          reps.append((
+              "  function formatStartTime(r) {\n    const d = r.startDate || '';\n    if (!d) return '';\n    const t = r.startTime || '';\n    return t ? `${d} ${t}` : d;\n  }\n",
+              "  function formatStartTime(r) {\n    const d = r.startDate || '';\n    if (!d) return '';\n    if (settings.showTime === '0') return d;\n    const t = r.startTime || '';\n    return t ? `${d} ${t}` : d;\n  }\n",
+              1
+          ))
+
+          # 4) 结束日期
+          reps.append((
+              "    const t = r.endTime || '';\n    const prefix = r.status === 'dropped' ? '弃读'\n",
+              "    const t = settings.showTime === '0' ? '' : (r.endTime || '');\n    const prefix = r.status === 'dropped' ? '弃读'\n",
+              1
+          ))
+
+          # 5) loadSettings 里回填
+          reps.append((
+              "    const tSel = document.getElementById('set-time-style');\n    if (tSel) tSel.value = settings.timeStyle || 'marker';\n    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';\n    const gToken = document.getElementById('gist-token');\n",
+              "    const tSel = document.getElementById('set-time-style');\n    if (tSel) tSel.value = settings.timeStyle || 'marker';\n    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';\n    const stSel = document.getElementById('set-show-time');\n    if (stSel) stSel.value = settings.showTime || '1';\n    const gToken = document.getElementById('gist-token');\n",
+              1
+          ))
+
+          # 6) change 绑定
+          reps.append((
+              "  const tSel = document.getElementById('set-time-style');\n  if (tSel) tSel.addEventListener('change', () => {\n    settings.timeStyle = tSel.value;\n    document.documentElement.dataset.timeStyle = settings.timeStyle;\n    saveSettings();\n    render();\n  });\n",
+              "  const tSel = document.getElementById('set-time-style');\n  if (tSel) tSel.addEventListener('change', () => {\n    settings.timeStyle = tSel.value;\n    document.documentElement.dataset.timeStyle = settings.timeStyle;\n    saveSettings();\n    render();\n  });\n  const stSel = document.getElementById('set-show-time');\n  if (stSel) stSel.addEventListener('change', () => {\n    settings.showTime = stSel.value;\n    saveSettings();\n    render();\n  });\n",
+              1
+          ))
+
+          bad = False
+          for i, (old, new, exp) in enumerate(reps, 1):
+              c = s.count(old)
+              print('rep%d count=%d want=%d' % (i, c, exp))
+              if c != exp:
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new, exp in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "feat: add option to hide the time-of-day on card dates"
+          git push origin HEAD:main
+      - name: Remove workflow
+        run: |
+          git rm .github/workflows/add-show-time.yml
+          git commit -m "chore: remove add-show-time workflow"
+          git push origin HEAD:main
