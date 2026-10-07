@@ -1,0 +1,93 @@
+name: add-time-style2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-time-style2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add date style option (correct anchors)
+        run: |
+          python3 - <<'PY'
+          import io, sys
+
+          p = 'index.html'
+          s = io.open(p, encoding='utf-8').read()
+          n = len(s)
+          reps = []
+
+          # 1) HTML：在阅读时长格式后加「日期样式」
+          reps.append((
+            "      <div class=\"section-title\">阅读时长格式</div>\n      <div class=\"field\">\n        <label>卡片上如何显示阅读时长</label>\n        <select id=\"set-duration-format\">\n          <option value=\"cn\">1小时1分</option>\n          <option value=\"cn-pad\">1小时01分</option>\n          <option value=\"cn-min\">1小时1分钟</option>\n          <option value=\"en\">1h1m</option>\n          <option value=\"en-pad\">1h01m</option>\n          <option value=\"hours\">1.5小时</option>\n          <option value=\"minutes\">90分钟</option>\n        </select>\n      </div>\n",
+            "      <div class=\"section-title\">阅读时长格式</div>\n      <div class=\"field\">\n        <label>卡片上如何显示阅读时长</label>\n        <select id=\"set-duration-format\">\n          <option value=\"cn\">1小时1分</option>\n          <option value=\"cn-pad\">1小时01分</option>\n          <option value=\"cn-min\">1小时1分钟</option>\n          <option value=\"en\">1h1m</option>\n          <option value=\"en-pad\">1h01m</option>\n          <option value=\"hours\">1.5小时</option>\n          <option value=\"minutes\">90分钟</option>\n        </select>\n      </div>\n\n      <div class=\"section-title\">日期样式</div>\n      <div class=\"field\">\n        <label>卡片上方那行日期怎么显示</label>\n        <select id=\"set-time-style\">\n          <option value=\"marker\">分组标记（小竖条）</option>\n          <option value=\"timeline\">时间线（圆点 + 横线）</option>\n        </select>\n      </div>\n",
+            1
+          ))
+
+          # 2) CSS：加时间线样式
+          reps.append((
+            "  .card-time::before {\n    content: '';\n    position: absolute;\n    left: 0;\n    top: 50%;\n    transform: translateY(-50%);\n    width: 3px;\n    height: 11px;\n    border-radius: 2px;\n    background: var(--accent);\n    opacity: .5;\n  }\n",
+            "  .card-time::before {\n    content: '';\n    position: absolute;\n    left: 0;\n    top: 50%;\n    transform: translateY(-50%);\n    width: 3px;\n    height: 11px;\n    border-radius: 2px;\n    background: var(--accent);\n    opacity: .5;\n  }\n  :root[data-time-style=\"timeline\"] .card-time {\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    padding-left: 0;\n  }\n  :root[data-time-style=\"timeline\"] .card-time::before {\n    position: static;\n    transform: none;\n    width: 7px;\n    height: 7px;\n    border-radius: 50%;\n    opacity: .75;\n  }\n  :root[data-time-style=\"timeline\"] .card-time::after {\n    content: '';\n    flex: 1;\n    height: 1px;\n    background: var(--line);\n  }\n",
+            1
+          ))
+
+          # 3) settings 默认值（两处）
+          reps.append((
+            "durationFormat: 'cn',",
+            "durationFormat: 'cn', timeStyle: 'marker',",
+            2
+          ))
+
+          # 4) 初始化 1（loadSettings）
+          reps.append((
+            "    const dEl = document.getElementById('set-duration-format');\n    if (dEl) dEl.value = settings.durationFormat;\n",
+            "    const dEl = document.getElementById('set-duration-format');\n    if (dEl) dEl.value = settings.durationFormat;\n    const tEl = document.getElementById('set-time-style');\n    if (tEl) tEl.value = settings.timeStyle || 'marker';\n    document.documentElement.dataset.timeStyle = settings.timeStyle || 'marker';\n",
+            1
+          ))
+
+          # 5) 初始化 2（打开设置面板）
+          reps.append((
+            "    const durSel = document.getElementById('set-duration-format');\n    if (durSel) durSel.value = settings.durationFormat;\n",
+            "    const durSel = document.getElementById('set-duration-format');\n    if (durSel) durSel.value = settings.durationFormat;\n    const tSel = document.getElementById('set-time-style');\n    if (tSel) tSel.value = settings.timeStyle || 'marker';\n",
+            1
+          ))
+
+          # 6) change 绑定
+          reps.append((
+            "  const durSel = document.getElementById('set-duration-format');\n  if (durSel) durSel.addEventListener('change', () => {\n    settings.durationFormat = durSel.value;\n    saveSettings();\n    render();\n  });\n",
+            "  const durSel = document.getElementById('set-duration-format');\n  if (durSel) durSel.addEventListener('change', () => {\n    settings.durationFormat = durSel.value;\n    saveSettings();\n    render();\n  });\n  const tSel = document.getElementById('set-time-style');\n  if (tSel) tSel.addEventListener('change', () => {\n    settings.timeStyle = tSel.value;\n    document.documentElement.dataset.timeStyle = settings.timeStyle;\n    saveSettings();\n    render();\n  });\n",
+            1
+          ))
+
+          bad = False
+          for i, (old, new, exp) in enumerate(reps, 1):
+              c = s.count(old)
+              print('rep%d count=%d want=%d' % (i, c, exp))
+              if c != exp:
+                  bad = True
+          if bad:
+              sys.exit(1)
+
+          for old, new, exp in reps:
+              s = s.replace(old, new)
+
+          io.open(p, 'w', encoding='utf-8').write(s)
+          print('DONE %d -> %d bytes' % (n, len(s)))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "feat: add date style option (marker / timeline)"
+          git push origin HEAD:main
+      - name: Cleanup
+        run: |
+          git rm -f diag2.txt 2>/dev/null || true
+          git rm .github/workflows/add-time-style2.yml
+          git commit -m "chore: cleanup diag2 and add-time-style2 workflow"
+          git push origin HEAD:main
